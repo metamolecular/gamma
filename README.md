@@ -18,8 +18,8 @@ graphcore = "0.1"
 `HashGraph` is the reference `Graph` implementation.
 
 ```rust
-use graphcore_next::graph::Graph;
-use graphcore_next::graph::HashGraph;
+use graphcore::graph::Graph;
+use graphcore::graph::HashGraph;
 
 fn main() {
   let mut graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
@@ -47,9 +47,9 @@ fn main() {
 Depth-first traversal is implemented as an `Iterator`.
 
 ```rust
-use graphcore_next::graph::Graph;
-use graphcore_next::graph::HashGraph;
-use graphcore_next::traversal::depth_first;
+use graphcore::graph::Graph;
+use graphcore::graph::HashGraph;
+use graphcore::traversal::depth_first;
 
 fn main() {
   let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
@@ -70,9 +70,9 @@ fn main() {
 Breadth-first traversal is also implemented as an `Iterator`.
 
 ```rust
-use graphcore_next::graph::Graph;
-use graphcore_next::graph::HashGraph;
-use graphcore_next::traversal::breadth_first;
+use graphcore::graph::Graph;
+use graphcore::graph::HashGraph;
+use graphcore::traversal::breadth_first;
 
 fn main() {
   let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
