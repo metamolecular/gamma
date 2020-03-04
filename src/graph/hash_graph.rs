@@ -144,7 +144,6 @@ impl<'a, N: Eq + Hash, E> Graph<'a, N> for HashGraph<'a, N, E> {
         match self.neighbors.get(source) {
             None => Err(Error::UnknownNode),
             Some(neighbors) => {
-                println!("NEIGHBORS");
                 if neighbors.contains(&target) {
                     Ok(true)
                 } else {
