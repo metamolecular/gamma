@@ -1,11 +1,11 @@
 [package]
-name = "graphcore"
+name = "gamma"
 version = "0.1.1"
-authors = ["The GraphCore Project Developers"]
+authors = ["The Gamma Project Developers"]
 license = "MIT"
 edition = "2018"
 readme = "README.md"
-repository = "https://github.com/metamolecular/graphcore"
+repository = "https://github.com/metamolecular/gamma"
 description = """
 Graph primitives and traversals for Rust.
 """
