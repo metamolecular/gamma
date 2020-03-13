@@ -1,8 +1,8 @@
-# GraphCore
+# Gamma
 
 A graph library for Rust.
 
-GraphCore provides primitives and traversals for working with [graphs](https://en.wikipedia.org/wiki/Graph_theory).
+gamma provides primitives and traversals for working with [graphs](https://en.wikipedia.org/wiki/Graph_theory).
 
 ## Usage
 
@@ -10,7 +10,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-graphcore = "0.1"
+gamma = "0.1"
 ```
 
 ## Examples
@@ -18,8 +18,8 @@ graphcore = "0.1"
 `HashGraph` is the reference `Graph` implementation.
 
 ```rust
-use graphcore::graph::Graph;
-use graphcore::graph::HashGraph;
+use gamma::graph::Graph;
+use gamma::graph::HashGraph;
 
 fn main() {
   let mut graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
@@ -47,9 +47,9 @@ fn main() {
 Depth-first traversal is implemented as an `Iterator`.
 
 ```rust
-use graphcore::graph::Graph;
-use graphcore::graph::HashGraph;
-use graphcore::traversal::depth_first;
+use gamma::graph::Graph;
+use gamma::graph::HashGraph;
+use gamma::traversal::depth_first;
 
 fn main() {
   let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
@@ -70,9 +70,9 @@ fn main() {
 Breadth-first traversal is also implemented as an `Iterator`.
 
 ```rust
-use graphcore::graph::Graph;
-use graphcore::graph::HashGraph;
-use graphcore::traversal::breadth_first;
+use gamma::graph::Graph;
+use gamma::graph::HashGraph;
+use gamma::traversal::breadth_first;
 
 fn main() {
   let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
@@ -92,11 +92,11 @@ fn main() {
 
 ## Versions
 
-GraphCore is not yet stable, but care is taken to limit breaking changes
+Gamma is not yet stable, but care is taken to limit breaking changes
 and warn with deprecation whenever possible. Patch version never introduce
 breaking changes.
 
 # License
 
-GraphCore is distributed under the terms of the MIT License. See
+gamma is distributed under the terms of the MIT License. See
 [LICENSE-MIT](LICENSE-MIT) and [COPYRIGHT](COPYRIGHT) for details.

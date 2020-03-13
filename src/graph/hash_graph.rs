@@ -10,8 +10,8 @@ use crate::graph::WeightedGraph;
 /// iteration order are stable and set by build order.
 /// 
 /// ```
-/// use graphcore::graph::Graph;
-/// use graphcore::graph::HashGraph;
+/// use gamma::graph::Graph;
+/// use gamma::graph::HashGraph;
 /// 
 /// let mut graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
 ///     (&0, &1, "a"),
