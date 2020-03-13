@@ -9,9 +9,9 @@ use crate::graph::Error;
 /// closure edges.
 /// 
 /// ```
-/// use graphcore::graph::Graph;
-/// use graphcore::graph::HashGraph;
-/// use graphcore::traversal::breadth_first;
+/// use gamma::graph::Graph;
+/// use gamma::graph::HashGraph;
+/// use gamma::traversal::breadth_first;
 /// 
 /// let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
 ///     (&0, &1, ()),
