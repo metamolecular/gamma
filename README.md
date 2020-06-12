@@ -15,7 +15,7 @@ gamma = "0.2"
 
 ## Examples
 
-`HashGraph` is the reference `Graph` implementation.
+`StableGraph` is the reference `Graph` implementation.
 
 ```rust
 use gamma::graph::{ Graph, StableGraph };
