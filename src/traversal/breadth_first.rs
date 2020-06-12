@@ -2,21 +2,20 @@ use std::hash::Hash;
 use std::collections::VecDeque;
 use std::collections::HashSet;
 
-use crate::graph::Graph;
-use crate::graph::Error;
+use crate::graph::{ Graph, Error };
 
 /// Implements a breadth-first traversal as an edge Iterator. Reports cycle
 /// closure edges.
 /// 
 /// ```
 /// use gamma::graph::Graph;
-/// use gamma::graph::HashGraph;
+/// use gamma::graph::StableGraph;
 /// use gamma::traversal::breadth_first;
 /// 
-/// let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-///     (&0, &1, ()),
-///     (&1, &2, ()),
-///     (&2, &0, ()),
+/// let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+///     (0, 1, ()),
+///     (1, 2, ()),
+///     (2, 0, ()),
 /// ]).unwrap();
 /// let traversal = breadth_first(&graph, &0).unwrap();
 /// 
@@ -81,12 +80,12 @@ impl<'a, N, G> Iterator for BreadthFirst<'a, N, G>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::HashGraph;
+    use crate::graph::StableGraph;
 
 
     #[test]
-    fn iterates_nothing_given_nonmember_root() {
-        let graph = HashGraph::<_, ()>::build(
+    fn nonmember_root() {
+        let graph = StableGraph::<_, ()>::build(
             vec![ 0 ], vec![ ]
         ).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
@@ -95,17 +94,17 @@ mod tests {
     }
 
     #[test]
-    fn walks_p1() {
-        let graph = HashGraph::<_, ()>::build(vec![ 0 ], vec![ ]).unwrap();
+    fn p1() {
+        let graph = StableGraph::<_, ()>::build(vec![ 0 ], vec![ ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![ ]);
     }
 
     #[test]
-    fn walks_p2() {
-        let graph = HashGraph::build(vec![ 0, 1 ], vec![
-            (&0, &1, ())
+    fn p2() {
+        let graph = StableGraph::build(vec![ 0, 1 ], vec![
+            (0, 1, ())
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -115,10 +114,10 @@ mod tests {
     }
 
     #[test]
-    fn walks_p3_primary() {
-        let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ())
+    fn p3_primary() {
+        let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+            (0, 1, ()),
+            (1, 2, ())
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -129,10 +128,10 @@ mod tests {
     }
 
     #[test]
-    fn walks_p3_tertiary() {
-        let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ())
+    fn p3_tertiary() {
+        let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+            (0, 1, ()),
+            (1, 2, ())
         ]).unwrap();
         let traversal = breadth_first(&graph, &1).unwrap();
 
@@ -143,11 +142,11 @@ mod tests {
     }
 
     #[test]
-    fn walks_p4_primary() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &3, ())
+    fn p4_primary() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 3, ())
         ]).unwrap();
         let traversal = breadth_first(&graph, &1).unwrap();
 
@@ -159,11 +158,11 @@ mod tests {
     }
 
     #[test]
-    fn walks_s3_tertiary() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&0, &2, ()),
-            (&0, &3, ())
+    fn s3_tertiary() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (0, 2, ()),
+            (0, 3, ())
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -175,11 +174,11 @@ mod tests {
     }
 
     #[test]
-    fn walks_s3_primary() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&0, &2, ()),
-            (&0, &3, ())
+    fn s3_primary() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (0, 2, ()),
+            (0, 3, ())
         ]).unwrap();
         let traversal = breadth_first(&graph, &1).unwrap();
 
@@ -191,11 +190,11 @@ mod tests {
     }
 
     #[test]
-    fn walks_c3() {
-        let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &0, ())
+    fn c3() {
+        let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 0, ())
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -207,12 +206,12 @@ mod tests {
     }
 
     #[test]
-    fn walks_c4() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &3, ()),
-            (&3, &0, ())
+    fn c4() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 3, ()),
+            (3, 0, ())
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -225,13 +224,13 @@ mod tests {
     }
 
     #[test]
-    fn walks_diamond() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&0, &2, ()),
-            (&0, &3, ()),
-            (&1, &2, ()),
-            (&2, &3, ())
+    fn diamond() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (0, 2, ()),
+            (0, 3, ()),
+            (1, 2, ()),
+            (2, 3, ())
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -245,12 +244,12 @@ mod tests {
     }
 
     #[test]
-    fn walks_flower_from_stalk() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &3, ()),
-            (&3, &1, ())
+    fn flower_from_stalk() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 3, ()),
+            (3, 1, ())
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -263,10 +262,10 @@ mod tests {
     }
 
     #[test]
-    fn walks_t2_primary() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6 ], vec![
-            (&0, &1, ()), (&1, &2, ()), (&1, &3, ()),
-            (&3, &6, ()), (&0, &4, ()), (&2, &5, ())
+    fn t2_primary() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6 ], vec![
+            (0, 1, ()), (1, 2, ()), (1, 3, ()),
+            (3, 6, ()), (0, 4, ()), (2, 5, ())
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -281,10 +280,10 @@ mod tests {
     }
 
     #[test]
-    fn walks_t2_tertiary() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6 ], vec![
-            (&0, &1, ()), (&1, &2, ()), (&1, &3, ()),
-            (&3, &6, ()), (&0, &4, ()), (&2, &5, ())
+    fn t2_tertiary() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6 ], vec![
+            (0, 1, ()), (1, 2, ()), (1, 3, ()),
+            (3, 6, ()), (0, 4, ()), (2, 5, ())
         ]).unwrap();
         let bfs = breadth_first(&graph, &1).unwrap();
 
@@ -299,14 +298,14 @@ mod tests {
     }
 
     #[test]
-    fn walks_bicyclo_1_1_1() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
-            (&0, &1, false),
-            (&0, &2, false),
-            (&0, &3, false),
-            (&1, &4, false),
-            (&2, &4, false),
-            (&3, &4, false)
+    fn bicyclo_1_1_1() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
+            (0, 1, false),
+            (0, 2, false),
+            (0, 3, false),
+            (1, 4, false),
+            (2, 4, false),
+            (3, 4, false)
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -321,16 +320,16 @@ mod tests {
     }
 
     #[test]
-    fn walks_bicyclo_2_2_1() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &3, ()),
-            (&3, &4, ()),
-            (&4, &5, ()),
-            (&5, &0, ()),
-            (&4, &6, ()),
-            (&6, &1, ())
+    fn bicyclo_2_2_1() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 3, ()),
+            (3, 4, ()),
+            (4, 5, ()),
+            (5, 0, ()),
+            (4, 6, ()),
+            (6, 1, ())
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -347,14 +346,14 @@ mod tests {
     }
 
     #[test]
-    fn walks_butterfly() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
-            (&0, &1, ()),
-            (&0, &2, ()),
-            (&1, &2, ()),
-            (&2, &3, ()),
-            (&2, &4, ()),
-            (&3, &4, ())
+    fn butterfly() {
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
+            (0, 1, ()),
+            (0, 2, ()),
+            (1, 2, ()),
+            (2, 3, ()),
+            (2, 4, ()),
+            (3, 4, ())
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 

@@ -1,6 +1,6 @@
 [package]
 name = "gamma"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["The Gamma Project Developers"]
 license = "MIT"
 edition = "2018"
@@ -11,4 +11,3 @@ Graph primitives and traversals for Rust.
 """
 
 [dependencies]
-indexmap = "1.3.1"

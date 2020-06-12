@@ -1,21 +1,19 @@
 use std::collections::HashSet;
 use std::hash::Hash;
 
-use crate::graph::Graph;
-use crate::graph::Error;
+use crate::graph::{ Graph, Error };
 
 /// Implements a depth-first traversal as an edge Iterator. Reports cycle
 /// closure edges.
 /// 
 /// ```
-/// use gamma::graph::Graph;
-/// use gamma::graph::HashGraph;
+/// use gamma::graph::{ Graph, StableGraph };
 /// use gamma::traversal::depth_first;
 /// 
-/// let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-///     (&0, &1, ()),
-///     (&1, &2, ()),
-///     (&2, &0, ()),
+/// let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+///     (0, 1, ()),
+///     (1, 2, ()),
+///     (2, 0, ()),
 /// ]).unwrap();
 /// let traversal = depth_first(&graph, &0).unwrap();
 /// 
@@ -90,18 +88,18 @@ impl<'a, N: std::fmt::Debug, G> Iterator for DepthFirst<'a, N, G>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::HashGraph;
+    use crate::graph::StableGraph;
 
     #[test]
     fn returns_error_given_unknown_root() {
-        let graph = HashGraph::<_, ()>::build(vec![ 0 ], vec![ ]).unwrap();
+        let graph = StableGraph::<_, ()>::build(vec![ 0 ], vec![ ]).unwrap();
 
         assert_eq!(depth_first(&graph, &1).err().unwrap(), Error::UnknownNode);
     }
 
     #[test]
     fn walks_p1() {
-        let graph = HashGraph::<_, ()>::build(vec![ 0 ], vec![ ]).unwrap();
+        let graph = StableGraph::<_, ()>::build(vec![ 0 ], vec![ ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![ ]);
@@ -109,8 +107,8 @@ mod tests {
 
     #[test]
     fn walks_p2() {
-        let graph = HashGraph::build(vec![ 0, 1 ], vec![
-            (&0, &1, ())
+        let graph = StableGraph::build(vec![ 0, 1 ], vec![
+            (0, 1, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -121,9 +119,9 @@ mod tests {
 
     #[test]
     fn walks_p3() {
-        let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+            (0, 1, ()),
+            (1, 2, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -135,9 +133,9 @@ mod tests {
 
     #[test]
     fn walks_p3_from_inside() {
-        let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+            (0, 1, ()),
+            (1, 2, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &1).unwrap();
 
@@ -149,10 +147,10 @@ mod tests {
 
     #[test]
     fn walks_p4() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &3, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 3, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -165,10 +163,10 @@ mod tests {
 
     #[test]
     fn walks_c3() {
-        let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &0, ()),
+        let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 0, ()),
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -181,10 +179,10 @@ mod tests {
 
     #[test]
     fn walks_s3() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&1, &3, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (1, 3, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -197,10 +195,10 @@ mod tests {
 
     #[test]
     fn walks_s3_from_inside() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&1, &3, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (1, 3, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &1).unwrap();
 
@@ -213,11 +211,11 @@ mod tests {
 
     #[test]
     fn walks_flower_from_stalk() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &3, ()),
-            (&3, &1, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 3, ()),
+            (3, 1, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -231,11 +229,11 @@ mod tests {
 
     #[test]
     fn walks_flower_with_cut_in_branch() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &0, ()),
-            (&2, &3, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 0, ()),
+            (2, 3, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -249,12 +247,12 @@ mod tests {
 
     #[test]
     fn walks_a_blocked_branched_path() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&1, &3, ()),
-            (&3, &4, ()),
-            (&4, &1, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (1, 3, ()),
+            (3, 4, ()),
+            (4, 1, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -269,14 +267,14 @@ mod tests {
 
     #[test]
     fn walks_220_with_cut_on_second_branching() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3, 4, 5 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &5, ()),
-            (&2, &3, ()),
-            (&3, &4, ()),
-            (&4, &5, ()),
-            (&5, &0, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4, 5 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 5, ()),
+            (2, 3, ()),
+            (3, 4, ()),
+            (4, 5, ()),
+            (5, 0, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -293,13 +291,13 @@ mod tests {
 
     #[test]
     fn walks_both_cycles_of_210() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
-            (&0, &1, ()),
-            (&1, &2, ()),
-            (&2, &0, ()),
-            (&2, &3, ()),
-            (&3, &4, ()),
-            (&4, &0, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
+            (0, 1, ()),
+            (1, 2, ()),
+            (2, 0, ()),
+            (2, 3, ()),
+            (3, 4, ()),
+            (4, 0, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 
@@ -315,10 +313,10 @@ mod tests {
 
     #[test]
     fn walks_cube() {
-        let graph = HashGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6, 7 ], vec![
-            (&0, &1, ()), (&1, &2, ()), (&2, &3, ()), (&3, &0, ()),
-            (&4, &5, ()), (&5, &6, ()), (&6, &7, ()), (&7, &4, ()),
-            (&0, &4, ()), (&1, &5, ()), (&2, &6, ()), (&3, &7, ())
+        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6, 7 ], vec![
+            (0, 1, ()), (1, 2, ()), (2, 3, ()), (3, 0, ()),
+            (4, 5, ()), (5, 6, ()), (6, 7, ()), (7, 4, ()),
+            (0, 4, ()), (1, 5, ()), (2, 6, ()), (3, 7, ())
         ]).unwrap();
         let traversal = depth_first(&graph, &0).unwrap();
 

@@ -1,5 +1,4 @@
-use crate::graph::Error;
-use crate::graph::Graph;
+use super::{ Graph, Error };
 
 pub trait WeightedGraph<'a, N:'a, E> : Graph<'a, N> {
     /// Returns the weight between source and target.

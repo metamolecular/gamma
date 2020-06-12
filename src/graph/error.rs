@@ -1,6 +1,6 @@
 #[derive(Debug, PartialEq)]
 pub enum Error {
     UnknownNode,
-    DuplicateNode,
-    DuplicateEdge
+    UnknownIndex(usize),
+    DuplicatePairing(usize, usize)
 }

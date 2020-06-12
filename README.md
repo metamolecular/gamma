@@ -10,7 +10,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gamma = "0.1"
+gamma = "0.2"
 ```
 
 ## Examples
@@ -18,13 +18,12 @@ gamma = "0.1"
 `HashGraph` is the reference `Graph` implementation.
 
 ```rust
-use gamma::graph::Graph;
-use gamma::graph::HashGraph;
+use gamma::graph::{ Graph, StableGraph };
 
 fn main() {
-  let mut graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-      (&0, &1, "a"),
-      (&1, &2, "b")
+  let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+      (0, 1, "a"),
+      (1, 2, "b")
   ]
   ).unwrap();
   
@@ -47,15 +46,14 @@ fn main() {
 Depth-first traversal is implemented as an `Iterator`.
 
 ```rust
-use gamma::graph::Graph;
-use gamma::graph::HashGraph;
+use gamma::graph::{ Graph, StableGraph };
 use gamma::traversal::depth_first;
 
 fn main() {
-  let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-      (&0, &1, ()),
-      (&1, &2, ()),
-      (&2, &0, ()),
+  let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+      (0, 1, ()),
+      (1, 2, ()),
+      (2, 0, ()),
   ]).unwrap();
   let traversal = depth_first(&graph, &0).unwrap();
   
@@ -70,15 +68,14 @@ fn main() {
 Breadth-first traversal is also implemented as an `Iterator`.
 
 ```rust
-use gamma::graph::Graph;
-use gamma::graph::HashGraph;
+use gamma::graph::{ Graph, StableGraph };
 use gamma::traversal::breadth_first;
 
 fn main() {
-  let graph = HashGraph::build(vec![ 0, 1, 2 ], vec![
-      (&0, &1, ()),
-      (&1, &2, ()),
-      (&2, &0, ()),
+  let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+      (0, 1, ()),
+      (1, 2, ()),
+      (2, 0, ()),
   ]).unwrap();
   let traversal = breadth_first(&graph, &0).unwrap();
   
@@ -92,9 +89,8 @@ fn main() {
 
 ## Versions
 
-Gamma is not yet stable, but care is taken to limit breaking changes
-and warn with deprecation whenever possible. Patch version never introduce
-breaking changes.
+Gamma is not yet stable, but care is taken to limit breaking changes whenever
+possible. Patch version never introduce breaking changes.
 
 # License
 

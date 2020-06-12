@@ -1,5 +1,6 @@
 use crate::graph::Error;
 
+/// An undirected graph.
 pub trait Graph<'a, N: 'a> {
     type NodeIterator: Iterator<Item=&'a N>;
     type NeighborIterator: Iterator<Item=&'a N>;
