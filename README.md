@@ -2,7 +2,7 @@
 
 A graph library for Rust.
 
-gamma provides primitives and traversals for working with [graphs](https://en.wikipedia.org/wiki/Graph_theory).
+Gamma provides primitives and traversals for working with [graphs](https://en.wikipedia.org/wiki/Graph_theory). It is based on ideas presented in *[A Minimal Graph API](https://depth-first.com/articles/2020/01/06/a-minimal-graph-api/)*.
 
 ## Usage
 
