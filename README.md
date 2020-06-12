@@ -90,9 +90,9 @@ fn main() {
 ## Versions
 
 Gamma is not yet stable, but care is taken to limit breaking changes whenever
-possible. Patch version never introduce breaking changes.
+possible. Patch versions never introduce breaking changes.
 
 # License
 
-gamma is distributed under the terms of the MIT License. See
+Gamma is distributed under the terms of the MIT License. See
 [LICENSE-MIT](LICENSE-MIT) and [COPYRIGHT](COPYRIGHT) for details.
