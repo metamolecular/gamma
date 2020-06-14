@@ -423,8 +423,9 @@ mod tests {
         let graph = StableGraph::<_, ()>::build(vec![
             Node::new(0)
         ], vec![ ]).unwrap();
+        let degree = graph.degree(&Node::new(1));
 
-        assert_eq!(graph.degree(&Node::new(0)), Ok(0));
+        assert_eq!(degree.err(), Some(Error::UnknownNode));
     }
 
     #[test]
@@ -447,7 +448,7 @@ mod tests {
     }
 
     #[test]
-    fn edges_given_p3() {
+    fn edges_given_p3_secondary() {
         let graph = StableGraph::build(vec![
             Node::new(0), Node::new(1), Node::new(2)
         ], vec![

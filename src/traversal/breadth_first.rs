@@ -80,14 +80,13 @@ impl<'a, N, G> Iterator for BreadthFirst<'a, N, G>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::StableGraph;
-
+    use crate::graph::IndexGraph;
 
     #[test]
     fn nonmember_root() {
-        let graph = StableGraph::<_, ()>::build(
-            vec![ 0 ], vec![ ]
-        ).unwrap();
+        let graph = IndexGraph::build(vec![
+            vec! [ ]
+        ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![ ]);
@@ -95,7 +94,9 @@ mod tests {
 
     #[test]
     fn p1() {
-        let graph = StableGraph::<_, ()>::build(vec![ 0 ], vec![ ]).unwrap();
+        let graph = IndexGraph::build(vec![
+            vec![ ]
+        ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![ ]);
@@ -103,8 +104,9 @@ mod tests {
 
     #[test]
     fn p2() {
-        let graph = StableGraph::build(vec![ 0, 1 ], vec![
-            (0, 1, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1 ],
+            vec![ 0 ]
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -115,9 +117,10 @@ mod tests {
 
     #[test]
     fn p3_primary() {
-        let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
-            (0, 1, ()),
-            (1, 2, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1 ],
+            vec![ 0, 2 ],
+            vec![ 1 ]
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -128,10 +131,11 @@ mod tests {
     }
 
     #[test]
-    fn p3_tertiary() {
-        let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
-            (0, 1, ()),
-            (1, 2, ())
+    fn p3_secondary() {
+        let graph = IndexGraph::build(vec![
+            vec![ 1 ],
+            vec![ 0, 2 ],
+            vec![ 1 ]
         ]).unwrap();
         let traversal = breadth_first(&graph, &1).unwrap();
 
@@ -143,10 +147,11 @@ mod tests {
 
     #[test]
     fn p4_primary() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (0, 1, ()),
-            (1, 2, ()),
-            (2, 3, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1 ],
+            vec![ 0, 2 ],
+            vec![ 1, 3 ],
+            vec![ 2 ]
         ]).unwrap();
         let traversal = breadth_first(&graph, &1).unwrap();
 
@@ -159,10 +164,11 @@ mod tests {
 
     #[test]
     fn s3_tertiary() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (0, 1, ()),
-            (0, 2, ()),
-            (0, 3, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 2, 3 ],
+            vec![ 0 ],
+            vec![ 0 ],
+            vec![ 0 ]
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -175,10 +181,11 @@ mod tests {
 
     #[test]
     fn s3_primary() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (0, 1, ()),
-            (0, 2, ()),
-            (0, 3, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 2, 3 ],
+            vec![ 0 ],
+            vec![ 0 ],
+            vec![ 0 ]
         ]).unwrap();
         let traversal = breadth_first(&graph, &1).unwrap();
 
@@ -191,10 +198,10 @@ mod tests {
 
     #[test]
     fn c3() {
-        let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
-            (0, 1, ()),
-            (1, 2, ()),
-            (2, 0, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 2 ],
+            vec![ 0, 2 ],
+            vec![ 1, 0 ]
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -207,11 +214,11 @@ mod tests {
 
     #[test]
     fn c4() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (0, 1, ()),
-            (1, 2, ()),
-            (2, 3, ()),
-            (3, 0, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 3 ],
+            vec![ 0, 2 ],
+            vec![ 1, 3 ],
+            vec![ 2, 0 ]
         ]).unwrap();
         let traversal = breadth_first(&graph, &0).unwrap();
 
@@ -225,12 +232,11 @@ mod tests {
 
     #[test]
     fn diamond() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (0, 1, ()),
-            (0, 2, ()),
-            (0, 3, ()),
-            (1, 2, ()),
-            (2, 3, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 2, 3 ],
+            vec![ 2, 0 ],
+            vec![ 0, 1, 3 ],
+            vec![ 0, 2 ]
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -245,11 +251,11 @@ mod tests {
 
     #[test]
     fn flower_from_stalk() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3 ], vec![
-            (0, 1, ()),
-            (1, 2, ()),
-            (2, 3, ()),
-            (3, 1, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1 ],
+            vec![ 0, 2, 3 ],
+            vec![ 1, 3 ],
+            vec![ 2, 1 ]
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -263,9 +269,14 @@ mod tests {
 
     #[test]
     fn t2_primary() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6 ], vec![
-            (0, 1, ()), (1, 2, ()), (1, 3, ()),
-            (3, 6, ()), (0, 4, ()), (2, 5, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 4 ],
+            vec![ 0, 2, 3 ],
+            vec![ 1, 5 ],
+            vec![ 1, 6 ],
+            vec![ 0 ],
+            vec![ 2 ],
+            vec![ 3 ]
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -281,9 +292,14 @@ mod tests {
 
     #[test]
     fn t2_tertiary() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6 ], vec![
-            (0, 1, ()), (1, 2, ()), (1, 3, ()),
-            (3, 6, ()), (0, 4, ()), (2, 5, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 4 ],
+            vec![ 0, 2, 3 ],
+            vec![ 1, 5 ],
+            vec![ 1, 6 ],
+            vec![ 0 ],
+            vec![ 2 ],
+            vec![ 3 ]
         ]).unwrap();
         let bfs = breadth_first(&graph, &1).unwrap();
 
@@ -298,14 +314,13 @@ mod tests {
     }
 
     #[test]
-    fn bicyclo_1_1_1() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
-            (0, 1, false),
-            (0, 2, false),
-            (0, 3, false),
-            (1, 4, false),
-            (2, 4, false),
-            (3, 4, false)
+    fn bicyclo_111() {
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 2, 3 ],
+            vec![ 0, 4 ],
+            vec![ 0, 4 ],
+            vec![ 0, 4 ],
+            vec![ 1, 2, 3 ]
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -320,16 +335,15 @@ mod tests {
     }
 
     #[test]
-    fn bicyclo_2_2_1() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4, 5, 6 ], vec![
-            (0, 1, ()),
-            (1, 2, ()),
-            (2, 3, ()),
-            (3, 4, ()),
-            (4, 5, ()),
-            (5, 0, ()),
-            (4, 6, ()),
-            (6, 1, ())
+    fn bicyclo_221() {
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 5 ],
+            vec![ 0, 2, 6 ],
+            vec![ 1, 3 ],
+            vec![ 2, 4 ],
+            vec![ 3, 5, 6 ],
+            vec![ 4, 0 ],
+            vec![ 4, 1 ]
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 
@@ -347,13 +361,12 @@ mod tests {
 
     #[test]
     fn butterfly() {
-        let graph = StableGraph::build(vec![ 0, 1, 2, 3, 4 ], vec![
-            (0, 1, ()),
-            (0, 2, ()),
-            (1, 2, ()),
-            (2, 3, ()),
-            (2, 4, ()),
-            (3, 4, ())
+        let graph = IndexGraph::build(vec![
+            vec![ 1, 2 ],
+            vec![ 0, 2 ],
+            vec![ 0, 1, 3, 4 ],
+            vec![ 2, 4 ],
+            vec![ 2, 3 ]
         ]).unwrap();
         let bfs = breadth_first(&graph, &0).unwrap();
 

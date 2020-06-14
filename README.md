@@ -15,7 +15,8 @@ gamma = "0.2"
 
 ## Examples
 
-`StableGraph` is the reference `Graph` implementation.
+`StableGraph` is the reference `Graph` implementation. Node, edge, and
+edge iteration order are stable and determined by the `build` function.
 
 ```rust
 use gamma::graph::{ Graph, StableGraph };
@@ -41,6 +42,24 @@ fn main() {
   assert_eq!(graph.has_edge(&1, &0).unwrap(), true);
   assert_eq!(graph.has_edge(&0, &2).unwrap(), false);
 }
+```
+
+`IndexGraph` also features stable node, neighbor, and
+edge iteration order. However, it is backed purely by `Vec`s, uses no reference
+counting, and does not implement `WeightedGraph`. IndexGraph` also allows
+neighbor iteration order on each terminal of an edge, which can be useful for
+algorithm debugging.
+
+```rust
+use gamma::graph::{ Graph, IndexGraph };
+ 
+let mut graph = IndexGraph::build(vec![
+    vec![ 1 ],
+    vec![ 0, 2 ],
+    vec![ 1 ]
+]).unwrap();
+
+assert_eq!(graph.degree(&1), Ok(2));
 ```
 
 Depth-first traversal is implemented as an `Iterator`.

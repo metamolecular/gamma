@@ -2,5 +2,6 @@
 pub enum Error {
     UnknownNode,
     UnknownIndex(usize),
-    DuplicatePairing(usize, usize)
+    DuplicatePairing(usize, usize),
+    MissingPairing(usize, usize)
 }
