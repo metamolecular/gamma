@@ -47,8 +47,8 @@ fn main() {
 `IndexGraph` also features stable node, neighbor, and
 edge iteration order. However, it is backed purely by `Vec`s, uses no reference
 counting, and does not implement `WeightedGraph`. `IndexGraph` also allows
-neighbor iteration order on each terminal of an edge, which can be useful for
-algorithm debugging.
+neighbor iteration order on each terminal of an edge to be set, which can be
+useful for algorithm debugging.
 
 ```rust
 use gamma::graph::{ Graph, IndexGraph };
