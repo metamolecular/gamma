@@ -3,6 +3,10 @@ use std::hash::Hash;
 use std::ops::Deref;
 use std::rc::Rc;
 
+// TODO: remove the internal Rc. You don't need it.
+// Add to documentation how to solve the problem with Rc.
+// N must implement clone
+
 use super::{ Graph, WeightedGraph, Error };
 
 /// Implements an undirected, labeled, graph. Node, neighbor, and edge
