@@ -4,12 +4,28 @@ use std::hash::Hash;
 
 use crate::graph::{ Graph, Error };
 
+/// An undirected graph in which ever node has degree one.
+/// 
+/// ```rust
+/// use gamma::graph::Graph;
+/// use gamma::matching::Matching;
+/// 
+/// let matching = Matching::build(vec![
+///     (0, 1),
+///     (2, 3)
+/// ]).unwrap();
+///
+/// assert_eq!(matching.order(), 4);
+/// assert_eq!(matching.size(), 2);
+/// ```
 pub struct Matching<N> {
     nodes: HashSet<N>,
     edges: HashMap<N, N>
 }
 
 impl<N: Eq+Hash+Clone> Matching<N> {
+    /// Builds a Matching from the supplied nodes. Returns
+    /// graph::Error::InvalidEdge if two edges contain an identical terminal.
     pub fn build(spec: Vec<(N, N)>) -> Result<Self, Error> {
         let mut nodes = HashSet::new();
         let mut edges = HashMap::new();

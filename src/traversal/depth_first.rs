@@ -48,7 +48,7 @@ pub struct DepthFirst<'a, N, G> {
     graph: &'a G
 }
 
-impl<'a, N: std::fmt::Debug, G> Iterator for DepthFirst<'a, N, G>
+impl<'a, N, G> Iterator for DepthFirst<'a, N, G>
     where N: Eq + Hash, G: Graph<'a, N> {
     type Item = (&'a N, &'a N, bool);
 
