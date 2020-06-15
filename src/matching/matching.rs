@@ -2,8 +2,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
 
-use super::{ Error };
-use crate::graph::{ Graph, Error as GraphError };
+use crate::graph::{ Graph, Error };
 
 pub struct Matching<N> {
     nodes: HashSet<N>,
@@ -17,7 +16,7 @@ impl<N: Eq+Hash+Clone> Matching<N> {
 
         for (source, target) in spec {
             if nodes.contains(&source) {
-                return Err(Error::Foo);
+                return Err(Error::InvalidEdge);
             } else {
                 nodes.insert(source.clone());
                 nodes.insert(target.clone());
@@ -56,20 +55,20 @@ impl<'a, N: 'a+Eq+Hash> Graph<'a, N> for Matching<N> {
 
     fn neighbors(
         &'a self, node: &N
-    ) -> Result<Self::NeighborIterator, GraphError> {
+    ) -> Result<Self::NeighborIterator, Error> {
         match self.edges.get(node) {
             Some(node) => Ok(NeighborIterator {
                 neighbor: node, done: false
             }),
-            None => Err(GraphError::UnknownNode)
+            None => Err(Error::UnknownNode)
         }
     }
 
-    fn degree(&self, node: &N) -> Result<usize, GraphError> {
+    fn degree(&self, node: &N) -> Result<usize, Error> {
         if self.nodes.contains(node) {
             Ok(1)
         } else {
-            Err(GraphError::UnknownNode)
+            Err(Error::UnknownNode)
         }
     }
 
@@ -77,7 +76,7 @@ impl<'a, N: 'a+Eq+Hash> Graph<'a, N> for Matching<N> {
         self.edges.iter()
     }
 
-    fn has_edge(&self, source: &N, target: &N) -> Result<bool, GraphError> {
+    fn has_edge(&self, source: &N, target: &N) -> Result<bool, Error> {
         match self.edges.get(source) {
             Some(mate) => {
                 if mate == target {
@@ -85,7 +84,7 @@ impl<'a, N: 'a+Eq+Hash> Graph<'a, N> for Matching<N> {
                 } else if self.nodes.contains(target) {
                     Ok(false)
                 } else {
-                    Err(GraphError::UnknownNode)
+                    Err(Error::UnknownNode)
                 }
             },
             None => match self.edges.get(target) {
@@ -95,10 +94,10 @@ impl<'a, N: 'a+Eq+Hash> Graph<'a, N> for Matching<N> {
                     } else if self.nodes.contains(source) {
                         Ok(false)
                     } else {
-                        Err(GraphError::UnknownNode)
+                        Err(Error::UnknownNode)
                     }
                 },
-                None => Err(GraphError::UnknownNode)
+                None => Err(Error::UnknownNode)
             }
         }
     }
@@ -151,6 +150,34 @@ mod tests {
                 set
             }
         };
+    }
+
+    #[test]
+    fn build_given_known_source() {
+        let n0 = &Node::new(0);
+        let n1 = &Node::new(1);
+        let n2 = &Node::new(2);
+
+        let matching = Matching::build(vec![
+            (&n0, &n1),
+            (&n0, &n2)
+        ]);
+
+        assert_eq!(matching.err(), Some(Error::InvalidEdge))
+    }
+
+    #[test]
+    fn build_given_known_target() {
+        let n0 = &Node::new(0);
+        let n1 = &Node::new(1);
+        let n2 = &Node::new(2);
+
+        let matching = Matching::build(vec![
+            (&n0, &n1),
+            (&n1, &n2)
+        ]);
+
+        assert_eq!(matching.err(), Some(Error::InvalidEdge))
     }
 
     #[test]
@@ -264,7 +291,7 @@ mod tests {
         ]).unwrap();
         let neighbors = matching.neighbors(&n2);
 
-        assert_eq!(neighbors.err(), Some(GraphError::UnknownNode));
+        assert_eq!(neighbors.err(), Some(Error::UnknownNode));
     }
 
     #[test]
@@ -288,7 +315,7 @@ mod tests {
             (n0, n1)
         ]).unwrap();
 
-        assert_eq!(matching.degree(&n2).err(), Some(GraphError::UnknownNode));
+        assert_eq!(matching.degree(&n2).err(), Some(Error::UnknownNode));
     }
 
     #[test]
@@ -338,7 +365,7 @@ mod tests {
         ]).unwrap();
         let result = matching.has_edge(&n2, &n0);
 
-        assert_eq!(result.err(), Some(GraphError::UnknownNode));
+        assert_eq!(result.err(), Some(Error::UnknownNode));
     }
 
     #[test]
@@ -351,7 +378,7 @@ mod tests {
         ]).unwrap();
         let result = matching.has_edge(&n0, &n2);
 
-        assert_eq!(result.err(), Some(GraphError::UnknownNode));
+        assert_eq!(result.err(), Some(Error::UnknownNode));
     }
 
     #[test]
