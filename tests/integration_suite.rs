@@ -1,5 +1,17 @@
+use std::rc::Rc;
 use gamma::graph::{ Graph, StableGraph };
 use gamma::traversal::{ depth_first, breadth_first };
+
+#[derive(Eq, Hash, PartialEq, Debug)]
+struct Node {
+    value: u8
+}
+
+impl Node {
+    fn new(value: u8) -> Self {
+        Node { value }
+    }
+}
 
 fn gimmie_graph<'a>() -> StableGraph<usize, &'a str> {
     StableGraph::build(vec![ 0, 1, 2 ], vec![
@@ -8,9 +20,29 @@ fn gimmie_graph<'a>() -> StableGraph<usize, &'a str> {
     ]).unwrap()
 }
 
+fn gimmie_rc_graph<'a>() -> StableGraph<Rc<Node>, &'a str> {
+    let n0 = Rc::new(Node::new(0));
+    let n1 = Rc::new(Node::new(1));
+    let n2 = Rc::new(Node::new(2));
+
+    StableGraph::build(vec![
+        n0.clone(), n1.clone(), n2.clone()
+    ], vec![
+        (n0, n1.clone(), "a"),
+        (n1, n2, "a")
+    ]).unwrap()
+}
+
 #[test]
 fn retured_graph() {
     let graph = gimmie_graph();
+
+    assert_eq!(graph.order(), 3);
+}
+
+#[test]
+fn returned_rc_graph() {
+    let graph = gimmie_rc_graph();
 
     assert_eq!(graph.order(), 3);
 }

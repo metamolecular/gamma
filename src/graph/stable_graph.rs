@@ -1,18 +1,13 @@
-use std::collections::{ HashMap, HashSet };
+use std::collections::HashMap;
 use std::hash::Hash;
-use std::ops::Deref;
-use std::rc::Rc;
-
-// TODO: remove the internal Rc. You don't need it.
-// Add to documentation how to solve the problem with Rc.
-// N must implement clone
 
 use super::{ Graph, WeightedGraph, Error };
 
-/// Implements an undirected, labeled, graph. Node, neighbor, and edge
+/// Reference implementation of Graph and WeightedGraph.Implements an
+/// undirected, edge-weighted, graph. Node, neighbor, and edge
 /// iteration order are set by the build function and will remain stable.
 /// 
-/// ```
+/// ```rust
 /// use gamma::graph::{ Graph, StableGraph, Error };
 /// 
 /// fn main() -> Result<(), Error> {
@@ -26,83 +21,92 @@ use super::{ Graph, WeightedGraph, Error };
 ///     assert_eq!(graph.size(), 2);
 ///     assert_eq!(graph.nodes().collect::<Vec<_>>(), vec![ &0, &1, &2 ]);
 ///     assert_eq!(graph.has_node(&0), true);
-///     assert_eq!(graph.neighbors(&1).unwrap().collect::<Vec<_>>(), vec![ &0, &2 ]);
-///     assert_eq!(graph.degree(&1).unwrap(), 2);
+///     assert_eq!(graph.neighbors(&1)?.collect::<Vec<_>>(), vec![ &0, &2 ]);
+///     assert_eq!(graph.degree(&1)?, 2);
 ///     assert_eq!(graph.edges().collect::<Vec<_>>(), vec![
 ///        (&0, &1), (&1, &2)
 ///     ]);
-///     assert_eq!(graph.has_edge(&0, &1).unwrap(), true);
-///     assert_eq!(graph.has_edge(&1, &0).unwrap(), true);
-///     assert_eq!(graph.has_edge(&0, &2).unwrap(), false);
+///     assert_eq!(graph.has_edge(&0, &1)?, true);
+///     assert_eq!(graph.has_edge(&1, &0)?, true);
+///     assert_eq!(graph.has_edge(&0, &2)?, false);
 /// 
 ///     Ok(())
 /// }
 /// ```
+/// 
+/// Although nodes and edges must implement Clone, the can be done in a
+/// lightweight manner using reference counting (std::rc::Rc). Likewise,
+/// references implement Clone (efficiently), so they can be used as
+/// nodes if the resulting StableGraph is not moved.
 pub struct StableGraph<N, E> {
-    nodes: Vec<Rc<N>>,
-    adjacency: HashMap<Rc<N>, Vec<(Rc<N>, Rc<E>)>>,
-    edges: Vec<(Rc<N>, Rc<N>)>
+    nodes: Vec<N>,
+    adjacency: HashMap<N, Vec<(N, E)>>,
+    edges: Vec<(N, N)>
 }
 
-impl<N: Eq+Hash, E> StableGraph<N, E> {
+impl<N: Eq+Hash+Clone, E: Clone> StableGraph<N, E> {
     pub fn build(
         node_list: Vec<N>,
-        edge_list: Vec<(usize, usize, E)>
+        edge_list: Vec<(N, N, E)>
     ) -> Result<Self, Error> {
         let mut adjacency = HashMap::new();
         let mut nodes = vec![ ];
         let mut edges = vec![ ];
 
         for node in node_list {
-            let rc = Rc::new(node);
-
-            adjacency.insert(rc.clone(), Vec::new());
-            nodes.push(rc);
-        }
-
-        let mut pairings = HashSet::new();
-
-        for (sid, tid, weight) in edge_list {
-            if pairings.contains(&(sid, tid)) {
-                return Err(Error::DuplicatePairing(sid, tid));
+            if adjacency.contains_key(&node) {
+                return Err(Error::DuplicateNode);
             }
 
-            let source = match nodes.get(sid) {
-                Some(node) => node,
-                None => return Err(Error::UnknownIndex(sid))
-            };
-            let target = match nodes.get(tid) {
-                Some(node) => node,
-                None => return Err(Error::UnknownIndex(tid))
-            };
-            let weight = Rc::new(weight);
-        
-            adjacency.get_mut(target).unwrap().push(
-                (source.clone(), weight.clone()
-            ));
-            adjacency.get_mut(source).unwrap().push(
-                (target.clone(), weight)
-            );
-            edges.push((source.clone(), target.clone()));
-            pairings.insert((sid, tid));
-            pairings.insert((tid, sid));
+            adjacency.insert(node.clone(), Vec::new());
+            nodes.push(node);
         }
-            
+
+        for (source, target, weight) in edge_list {
+            match adjacency.get_mut(&source) {
+                Some(outs) => {
+                    for (mate, _) in outs.iter() {
+                        if mate == &target {
+                            return Err(Error::DuplicateEdge);
+                        }
+                    }
+
+                    outs.push((target.clone(), weight.clone()));
+                },
+                None => return Err(Error::UnknownNode)
+            }
+
+            match adjacency.get_mut(&target) {
+                Some(outs) => {
+                    for (mate, _) in outs.iter() {
+                        if mate == &source {
+                            return Err(Error::DuplicateEdge);
+                        }
+                    }
+
+                    outs.push((source.clone(), weight));
+                },
+                None => return Err(Error::UnknownNode)
+            }
+
+            edges.push((source, target));
+        }
+
         Ok(Self { nodes, adjacency, edges })
     }
 }
 
-impl<'a, N: 'a+Eq+Hash, E: 'a> Graph<'a, N> for StableGraph<N, E> {
-    type NodeIterator = NodeIterator<'a, N>;
+impl<'a, N: 'a+Hash+Eq, E: 'a> Graph<'a, N> for StableGraph<N, E> {
+    type NodeIterator = std::slice::Iter<'a, N>;
     type NeighborIterator = NeighborIterator<'a, N, E>;
     type EdgeIterator = EdgeIterator<'a, N>;
 
     fn is_empty(&self) -> bool {
-        self.adjacency.is_empty()
+        self.nodes.is_empty()
     }
 
     fn order(&self) -> usize {
-        self.adjacency.len()
+        self.nodes.len()
     }
 
     fn size(&self) -> usize {
@@ -110,7 +114,7 @@ impl<'a, N: 'a+Eq+Hash, E: 'a> Graph<'a, N> for StableGraph<N, E> {
     }
 
     fn nodes(&'a self) -> Self::NodeIterator {
-        NodeIterator { inner: self.nodes.iter() }
+        self.nodes.iter()
     }
 
     fn has_node(&self, node: &N) -> bool {
@@ -121,29 +125,22 @@ impl<'a, N: 'a+Eq+Hash, E: 'a> Graph<'a, N> for StableGraph<N, E> {
         &'a self, node: &N
     ) -> Result<Self::NeighborIterator, Error> {
         match self.adjacency.get(node) {
-            None => Err(Error::UnknownNode),
-            Some(neighbors) => Ok(NeighborIterator {
-                inner: neighbors.iter()
-            })
+            Some(neighbors) => Ok(NeighborIterator { iter: neighbors.iter() }),
+            None => Err(Error::UnknownNode)
         }
     }
 
     fn degree(&self, node: &N) -> Result<usize, Error> {
         match self.adjacency.get(node) {
-            None => Err(Error::UnknownNode),
-            Some(neighbors) => Ok(neighbors.len())
+            Some(neighbors) => Ok(neighbors.len()),
+            None => Err(Error::UnknownNode)
         }
     }
 
     fn has_edge(&self, source: &N, target: &N) -> Result<bool, Error> {
         match self.adjacency.get(source) {
-            None => Err(Error::UnknownNode),
             Some(neighbors) => {
-                let hit = neighbors.iter().find(|(neighbor, _)| {
-                    Deref::deref(neighbor) == target
-                });
-
-                if hit.is_some() {
+                if neighbors.iter().any(|edge| &edge.0 == target) {
                     Ok(true)
                 } else {
                     if self.adjacency.contains_key(target) {
@@ -152,73 +149,59 @@ impl<'a, N: 'a+Eq+Hash, E: 'a> Graph<'a, N> for StableGraph<N, E> {
                         Err(Error::UnknownNode)
                     }
                 }
-            }
+            },
+            None => Err(Error::UnknownNode)
         }
     }
 
     fn edges(&'a self) -> Self::EdgeIterator {
-        EdgeIterator { inner: self.edges.iter() }
+        EdgeIterator { iter: self.edges.iter() }
     }
 }
 
 impl<'a, N: 'a+Eq+Hash, E: 'a> WeightedGraph<'a, N, E> for StableGraph<N, E> {
     fn weight(
-        &self, source: &'a N, target: &'a N
+        &self, source: &N, target: &N
     ) -> Result<Option<&E>, Error> {
         match self.adjacency.get(source) {
             Some(neighbors) => {
-                if self.adjacency.contains_key(target) {
-                    for (neighbor, weight) in neighbors {
-                        if Deref::deref(neighbor) == target {
-                            return Ok(Some(Deref::deref(weight)));
+                match neighbors.iter().find(|(mate, _)| mate == target) {
+                    Some((_, weight)) => Ok(Some(weight)),
+                    None => {
+                        if self.adjacency.contains_key(target) {
+                            Ok(None)
+                        } else {
+                            Err(Error::UnknownNode)
                         }
                     }
-    
-                    Ok(None)
-                } else {
-                    Err(Error::UnknownNode)
                 }
             },
-            None => return Err(Error::UnknownNode)
+            None => Err(Error::UnknownNode)
         }
     }
 }
 
-pub struct NodeIterator<'a, N> {
-    inner: std::slice::Iter<'a, std::rc::Rc<N>>
-}
-
-impl<'a, N> Iterator for NodeIterator<'a, N> {
-    type Item = &'a N;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|rc| Deref::deref(rc))
-    }
-}
-
 pub struct NeighborIterator<'a, N, E> {
-    inner: std::slice::Iter<'a, (std::rc::Rc<N>, std::rc::Rc<E>)>
+    iter: std::slice::Iter<'a, (N, E)>
 }
 
 impl<'a, N, E> Iterator for NeighborIterator<'a, N, E> {
     type Item = &'a N;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|(rc, _)| Deref::deref(rc))
+        self.iter.next().map(|edge| &edge.0)
     }
 }
 
 pub struct EdgeIterator<'a, N> {
-    inner: std::slice::Iter<'a, (std::rc::Rc<N>, std::rc::Rc<N>)>
+    iter: std::slice::Iter<'a, (N, N)>
 }
 
-impl<'a, N: 'a> Iterator for EdgeIterator<'a, N> {
+impl<'a, N> Iterator for EdgeIterator<'a, N> {
     type Item = (&'a N, &'a N);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|(source, target)| {
-            (Deref::deref(source), Deref::deref(target))
-        })
+        self.iter.next().map(|edge| (&edge.0, &edge.1))
     }
 }
 
@@ -238,49 +221,68 @@ mod tests {
     }
 
     #[test]
-    fn build_given_invalid_sid() {
-        let graph = StableGraph::build(vec![
-            Node::new(0)
-        ], vec![
-            (1, 0, ())
-        ]);
+    fn build_given_duplicate_node() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(0);
+        let graph = StableGraph::<_, ()>::build(vec![
+            &n0, &n1
+        ], vec![ ]);
 
-        assert_eq!(graph.err(), Some(Error::UnknownIndex(1)));
+        assert_eq!(graph.err(), Some(Error::DuplicateNode))
     }
 
     #[test]
-    fn build_given_invalid_tid() {
+    fn build_given_invalid_source() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::build(vec![
-            Node::new(0)
+            &n0
         ], vec![
-            (0, 1, ())
+            (&n1, &n0, ())
         ]);
 
-        assert_eq!(graph.err(), Some(Error::UnknownIndex(1)));
+        assert_eq!(graph.err(), Some(Error::UnknownNode));
     }
 
     #[test]
-    fn build_given_duplicate_pairing() {
+    fn build_given_invalid_target() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1)
+            &n0
         ], vec![
-            (0, 1, ()),
-            (0, 1, ())
+            (&n0, &n1, ())
         ]);
 
-        assert_eq!(graph.err(), Some(Error::DuplicatePairing(0, 1)));
+        assert_eq!(graph.err(), Some(Error::UnknownNode));
     }
 
     #[test]
-    fn build_given_duplicate_pairing_reversed() {
+    fn build_given_duplicate_edge() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1)
+            &n0, &n1
         ], vec![
-            (0, 1, ()),
-            (1, 0, ())
+            (&n0, &n1, ()),
+            (&n0, &n1, ())
         ]);
 
-        assert_eq!(graph.err(), Some(Error::DuplicatePairing(1, 0)));
+        assert_eq!(graph.err(), Some(Error::DuplicateEdge));
+    }
+
+    #[test]
+    fn build_given_duplicate_edge_reversed() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
+        let graph = StableGraph::build(vec![
+            &n0, &n1
+        ], vec![
+            (&n0, &n1, ()),
+            (&n1, &n0, ())
+        ]);
+
+        assert_eq!(graph.err(), Some(Error::DuplicateEdge));
     }
 
     #[test]
@@ -292,8 +294,9 @@ mod tests {
 
     #[test]
     fn is_empty_given_p1() {
+        let n0 = Node::new(0);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0)
+            &n0
         ], vec![ ]).unwrap();
 
         assert!(!graph.is_empty());
@@ -308,8 +311,9 @@ mod tests {
 
     #[test]
     fn order_given_p1() {
+        let n0 = Node::new(0);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0)
+            &n0
         ], vec![ ]).unwrap();
 
         assert_eq!(graph.order(), 1);
@@ -324,11 +328,14 @@ mod tests {
 
     #[test]
     fn size_given_p3() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
+        let n2 = Node::new(2);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1), Node::new(2)
+            &n0, &n1, &n2
          ], vec![
-            (0, 1, ()),
-            (1, 2, ())
+            (&n0, &n1, ()),
+            (&n1, &n2, ())
          ]).unwrap();
 
         assert_eq!(graph.size(), 2);
@@ -344,106 +351,127 @@ mod tests {
 
     #[test]
     fn nodes_given_p3() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
+        let n2 = Node::new(2);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1), Node::new(2)
+            &n0, &n1, &n2
         ], vec![
-            (0, 1, ()),
-            (1, 2, ())
+            (&n0, &n1, ()),
+            (&n1, &n2, ())
         ]).unwrap();
         let nodes = graph.nodes().collect::<Vec<_>>();
 
         assert_eq!(nodes, vec![
-            &Node::new(0), &Node::new(1), &Node::new(2)
+            &&n0, &&n1, &&n2
         ]);
     }
 
     #[test]
     fn has_node_given_outside() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0)
+            &n0
         ], vec![
 
         ]).unwrap();
 
-        assert_eq!(graph.has_node(&Node::new(1)), false);
+        assert_eq!(graph.has_node(&&n1), false);
     }
 
     #[test]
     fn has_node_given_inside() {
+        let n0 = Node::new(0);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0)
+            &n0
         ], vec![
 
         ]).unwrap();
 
-        assert_eq!(graph.has_node(&Node::new(0)), true);
+        assert_eq!(graph.has_node(&&n0), true);
     }
 
     #[test]
     fn neighbors_given_outside() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0)
+            &n0
         ], vec![ ]).unwrap();
-        let neighbors = graph.neighbors(&Node::new(1));
+        let neighbors = graph.neighbors(&&n1);
 
         assert_eq!(neighbors.err(), Some(Error::UnknownNode));
     }
 
     #[test]
     fn neighbors_given_p1() {
+        let n0 = Node::new(0);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0)
+            &n0
         ], vec![ ]).unwrap();
-        let neighbors = graph.neighbors(&Node::new(0)).unwrap();
+        let neighbors = graph.neighbors(&&n0).unwrap();
 
         assert!(neighbors.collect::<Vec<_>>().is_empty());
     }
 
     #[test]
     fn neighbors_given_p2() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1)
+            &n0, &n1
         ], vec![
-            (0, 1, ())
+            (&n0, &n1, ())
         ]).unwrap();
-        let neighbors = graph.neighbors(&Node::new(0)).unwrap();
+        let neighbors = graph.neighbors(&&n0).unwrap();
 
-        assert_eq!(neighbors.collect::<Vec<_>>(), vec![ &Node::new(1) ]);
+        assert_eq!(neighbors.collect::<Vec<_>>(), vec![ &&n1 ]);
     }
 
     #[test]
     fn neighbors_given_p3_secondary() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
+        let n2 = Node::new(2);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1), Node::new(2)
+            &n0, &n1, &n2
         ], vec![
-            (0, 1, ()), (1, 2, ())
+            (&n0, &n1, ()),
+            (&n1, &n2, ())
         ]).unwrap();
-        let neighbors = graph.neighbors(&Node::new(1)).unwrap();
+        let neighbors = graph.neighbors(&&n1).unwrap();
 
         assert_eq!(neighbors.collect::<Vec<_>>(), vec![
-            &Node::new(0), &Node::new(2)
+            &&n0, &&n2
         ]);
     }
 
     #[test]
     fn degree_given_outside() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0)
+            &n0
         ], vec![ ]).unwrap();
-        let degree = graph.degree(&Node::new(1));
+        let degree = graph.degree(&&n1);
 
         assert_eq!(degree.err(), Some(Error::UnknownNode));
     }
 
     #[test]
     fn degree_given_p3_secondary() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
+        let n2 = Node::new(2);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1), Node::new(2)
+            &n0, &n1, &n2
         ], vec![
-            (0, 1, ()), (1, 2, ())
+            (&n0, &n1, ()),
+            (&n1, &n2, ())
         ]).unwrap();
 
-        assert_eq!(graph.degree(&Node::new(1)), Ok(2));
+        assert_eq!(graph.degree(&&n1), Ok(2));
     }
 
     #[test]
@@ -456,120 +484,144 @@ mod tests {
 
     #[test]
     fn edges_given_p3_secondary() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
+        let n2 = Node::new(2);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1), Node::new(2)
+            &n0, &n1, &n2
         ], vec![
-            (0, 1, ()), (1, 2, ())
+            (&n0, &n1, ()),
+            (&n1, &n2, ())
         ]).unwrap();
         let edges = graph.edges().collect::<Vec<_>>();
 
         assert_eq!(edges, vec![
-            (&Node::new(0), &Node::new(1)),
-            (&Node::new(1), &Node::new(2))
+            (&&n0, &&n1),
+            (&&n1, &&n2)
         ]);
     }
 
     #[test]
     fn has_edge_given_outside_source() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0)
+            &n0
         ], vec![ ]).unwrap();
-        let result = graph.has_edge(&Node::new(2), &Node::new(0));
+        let result = graph.has_edge(&&n1, &&n0);
 
         assert_eq!(result.err(), Some(Error::UnknownNode));
     }
 
     #[test]
     fn has_edge_given_outside_target() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0)
+            &n0
         ], vec![ ]).unwrap();
-        let result = graph.has_edge(&Node::new(0), &Node::new(2));
+        let result = graph.has_edge(&&n0, &&n1);
 
         assert_eq!(result.err(), Some(Error::UnknownNode));
     }
 
     #[test]
     fn has_edge_given_unconnected() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0), Node::new(1)
+            &n0, &n1
         ], vec![ ]).unwrap();
 
-        assert!(!graph.has_edge(&Node::new(0), &Node::new(1)).unwrap());
+        assert!(!graph.has_edge(&&n0, &&n1).unwrap());
     }
 
     #[test]
     fn has_edge_given_connected() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1)
+            &n0, &n1
         ], vec![
-            (0, 1, ())
+            (&n0, &n1, ())
         ]).unwrap();
 
-        assert!(graph.has_edge(&Node::new(0), &Node::new(1)).unwrap());
+        assert!(graph.has_edge(&&n0, &&n1).unwrap());
     }
 
     #[test]
     fn has_edge_given_connected_and_reversed() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1)
+            &n0, &n1
         ], vec![
-            (0, 1, ())
+            (&n0, &n1, ())
         ]).unwrap();
 
-        assert!(graph.has_edge(&Node::new(1), &Node::new(0)).unwrap());
+        assert!(graph.has_edge(&&n1, &&n0).unwrap());
     }
 
     #[test]
     fn weight_given_outside_source() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0), Node::new(1)
+            &n0
         ], vec![ ]).unwrap();
-        let weight = graph.weight(&Node::new(2), &Node::new(0));
+        let weight = graph.weight(&&n1, &&n0);
 
         assert_eq!(weight.err(), Some(Error::UnknownNode));
     }
 
     #[test]
     fn weight_given_outside_target() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0), Node::new(1)
+            &n0
         ], vec![ ]).unwrap();
-        let weight = graph.weight(&Node::new(0), &Node::new(2));
+        let weight = graph.weight(&&n0, &&n1);
 
         assert_eq!(weight.err(), Some(Error::UnknownNode));
     }
 
     #[test]
     fn weight_given_no_edge() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::<_, ()>::build(vec![
-            Node::new(0), Node::new(1)
+            &n0, &n1
         ], vec![ ]).unwrap();
-        let weight = graph.weight(&Node::new(0), &Node::new(1));
+        let weight = graph.weight(&&n0, &&n1);
 
         assert_eq!(weight, Ok(None));
     }
 
     #[test]
     fn weight_given_edge() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1)
+            &n0, &n1
         ], vec![
-            (0, 1, 42)
+            (&n0, &n1, 42)
         ]).unwrap();
-        let weight = graph.weight(&Node::new(0), &Node::new(1));
+        let weight = graph.weight(&&n0, &&n1);
 
         assert_eq!(weight, Ok(Some(&42)));
     }
 
     #[test]
     fn weight_given_edge_reversed() {
+        let n0 = Node::new(0);
+        let n1 = Node::new(1);
         let graph = StableGraph::build(vec![
-            Node::new(0), Node::new(1)
+            &n0, &n1
         ], vec![
-            (0, 1, 42)
+            (&n0, &n1, 42)
         ]).unwrap();
-        let weight = graph.weight(&Node::new(1), &Node::new(0));
+        let weight = graph.weight(&&n1, &&n0);
 
         assert_eq!(weight, Ok(Some(&42)));
     }
