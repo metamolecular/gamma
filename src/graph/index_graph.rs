@@ -43,9 +43,7 @@ impl IndexGraph {
 
         for (sid, tids) in adjacency.iter().enumerate() {            
             for (index, tid) in tids.iter().enumerate() {
-                if *tid >= nodes.len() {
-                    return Err(Error::UnknownNode);
-                } else if duplicate_after(tid, index, &tids) {
+                if duplicate_after(tid, index, &tids) {
                     return Err(Error::DuplicateEdge);
                 }
 
@@ -59,7 +57,7 @@ impl IndexGraph {
                             return Err(Error::MissingEdge);
                         }
                     },
-                    None => unimplemented!()
+                    None => return Err(Error::UnknownNode)
                 }
             }
         }
