@@ -44,9 +44,9 @@ impl IndexGraph {
         for (sid, tids) in adjacency.iter().enumerate() {            
             for (index, tid) in tids.iter().enumerate() {
                 if *tid >= nodes.len() {
-                    return Err(Error::UnknownIndex(*tid));
+                    return Err(Error::UnknownNode);
                 } else if duplicate_after(tid, index, &tids) {
-                    return Err(Error::DuplicatePairing(sid, *tid));
+                    return Err(Error::DuplicateEdge);
                 }
 
                 match adjacency.get(*tid) {
@@ -56,7 +56,7 @@ impl IndexGraph {
                                 edges.push((sid, *tid));
                             }
                         } else {
-                            return Err(Error::MissingPairing(*tid, sid));
+                            return Err(Error::MissingEdge);
                         }
                     },
                     None => unimplemented!()
@@ -157,7 +157,7 @@ mod tests {
             vec![ 1 ]
         ]);
 
-        assert_eq!(graph.err(), Some(Error::UnknownIndex(1)));
+        assert_eq!(graph.err(), Some(Error::UnknownNode));
     }
 
     #[test]
@@ -167,7 +167,7 @@ mod tests {
             vec![ 0 ]
         ]);
         
-        assert_eq!(graph.err(), Some(Error::MissingPairing(0, 1)));
+        assert_eq!(graph.err(), Some(Error::MissingEdge));
     }
 
     #[test]
@@ -177,7 +177,7 @@ mod tests {
             vec![ ]
         ]);
         
-        assert_eq!(graph.err(), Some(Error::MissingPairing(1, 0)));
+        assert_eq!(graph.err(), Some(Error::MissingEdge));
     }
 
     #[test]
@@ -187,7 +187,7 @@ mod tests {
             vec![ 0 ]
         ]);
 
-        assert_eq!(graph.err(), Some(Error::DuplicatePairing(0, 1)));
+        assert_eq!(graph.err(), Some(Error::DuplicateEdge));
     }
 
     #[test]

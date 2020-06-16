@@ -4,7 +4,5 @@ pub enum Error {
     InvalidEdge,
     DuplicateEdge,
     DuplicateNode,
-    UnknownIndex(usize),
-    DuplicatePairing(usize, usize),
-    MissingPairing(usize, usize)
+    MissingEdge
 }
