@@ -4,19 +4,23 @@ use std::hash::Hash;
 
 use crate::graph::{ Graph, Error };
 
-/// An undirected graph in which ever node has degree one.
+/// An undirected graph in which each node has degree one.
 /// 
 /// ```rust
-/// use gamma::graph::Graph;
+/// use gamma::graph::{ Graph, Error };
 /// use gamma::matching::Matching;
 /// 
-/// let matching = Matching::build(vec![
-///     (0, 1),
-///     (2, 3)
-/// ]).unwrap();
+/// fn main() -> Result<(), Error> {
+///     let matching = Matching::build(vec![
+///         (0, 1),
+///         (2, 3)
+///     ]).unwrap();
 ///
-/// assert_eq!(matching.order(), 4);
-/// assert_eq!(matching.size(), 2);
+///     assert_eq!(matching.order(), 4);
+///     assert_eq!(matching.size(), 2);
+/// 
+///     Ok(())
+/// }
 /// ```
 pub struct Matching<N> {
     nodes: HashSet<N>,

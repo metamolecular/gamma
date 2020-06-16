@@ -7,21 +7,25 @@ use crate::graph::{ Graph, Error };
 /// closure edges.
 /// 
 /// ```
-/// use gamma::graph::{ Graph, StableGraph };
+/// use gamma::graph::{ Graph, IndexGraph, Error };
 /// use gamma::traversal::depth_first;
 /// 
-/// let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
-///     (0, 1, ()),
-///     (1, 2, ()),
-///     (2, 0, ()),
-/// ]).unwrap();
-/// let traversal = depth_first(&graph, &0).unwrap();
+/// fn main() -> Result<(), Error> {
+///     let graph = IndexGraph::build(vec![
+///         vec![ 1, 2 ],
+///         vec![ 0, 2 ],
+///         vec![ 1, 0 ]
+///     ])?;
+///     let traversal = depth_first(&graph, &0)?;
+///
+///     assert_eq!(traversal.collect::<Vec<_>>(), vec![
+///         (&0, &1, false),
+///         (&1, &2, false),
+///         (&2, &0, true)
+///     ]);
 /// 
-/// assert_eq!(traversal.collect::<Vec<_>>(), vec![
-///     (&0, &1, false),
-///     (&1, &2, false),
-///     (&2, &0, true)
-/// ]);
+///     Ok(())
+/// }
 /// ```
 pub fn depth_first<'a, N, G>(
     graph: &'a G, root: &'a N

@@ -7,23 +7,28 @@ use crate::graph::{ Graph, Error };
 /// Implements a breadth-first traversal as an edge Iterator. Reports cycle
 /// closure edges.
 /// 
-/// ```
-/// use gamma::graph::Graph;
-/// use gamma::graph::StableGraph;
+/// ```rust
+/// use gamma::graph::{ Graph, IndexGraph, Error };
 /// use gamma::traversal::breadth_first;
 /// 
-/// let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
-///     (0, 1, ()),
-///     (1, 2, ()),
-///     (2, 0, ()),
-/// ]).unwrap();
-/// let traversal = breadth_first(&graph, &0).unwrap();
+/// fn main() -> Result<(), Error> {
+///     let graph = IndexGraph::build(vec![
+///         vec![ 1, 3 ],
+///         vec![ 0, 2 ],
+///         vec![ 1, 3 ],
+///         vec![ 2, 0 ]
+///     ])?;
+///     let traversal = breadth_first(&graph, &0)?;
+///
+///     assert_eq!(traversal.collect::<Vec<_>>(), vec![
+///         (&0, &1, false),
+///         (&0, &3, false),
+///         (&1, &2, false),
+///         (&3, &2, true)
+///     ]);
 /// 
-/// assert_eq!(traversal.collect::<Vec<_>>(), vec![
-///     (&0, &1, false),
-///     (&0, &2, false),
-///     (&1, &2, true)
-/// ]);
+///     Ok(())
+/// }
 /// ```
 pub fn breadth_first<'a, N, G>(
     graph: &'a G, root: &'a N

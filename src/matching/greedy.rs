@@ -20,24 +20,28 @@ use crate::traversal::depth_first;
 /// 
 /// ```rust
 /// use std::collections::HashSet;
-/// use gamma::graph::{Graph, IndexGraph};
+/// use gamma::graph::{Graph, IndexGraph, Error};
 /// use gamma::matching::greedy;
 /// 
-/// let graph = IndexGraph::build(vec![
-///     vec![ 1, 5 ],
-///     vec![ 0, 2 ],
-///     vec![ 1, 3 ],
-///     vec![ 2, 4 ],
-///     vec![ 3, 5 ],
-///     vec![ 4, 0 ]
-/// ]).unwrap();
-/// let matching = greedy(&graph);
-/// let mut edges = HashSet::new();
+/// fn main() -> Result<(), Error> {
+///     let graph = IndexGraph::build(vec![
+///         vec![ 1, 5 ],
+///         vec![ 0, 2 ],
+///         vec![ 1, 3 ],
+///         vec![ 2, 4 ],
+///         vec![ 3, 5 ],
+///         vec![ 4, 0 ]
+///     ])?;
+///     let matching = greedy(&graph);
+///     let mut edges = HashSet::new();
 ///
-/// edges.insert((&0, &1));
-/// edges.insert((&2, &3));
-/// edges.insert((&4, &5));
-/// assert_eq!(matching.edges().collect::<HashSet<_>>(), edges);
+///     edges.insert((&0, &1));
+///     edges.insert((&2, &3));
+///     edges.insert((&4, &5));
+///     assert_eq!(matching.edges().collect::<HashSet<_>>(), edges);
+/// 
+///     Ok(())
+/// }
 /// ```
 pub fn greedy<'a, N: 'a+Clone+Eq+Hash>(
     graph: &'a impl Graph<'a, N>

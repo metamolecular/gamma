@@ -2,21 +2,25 @@ use super::{ Graph, Error };
 
 /// Implements an undirected, unlabeled Graph. Node, neighbor, and edge
 /// iterator order are set by the build function and will remain stable.
-/// IndexGraph is inntended for for use as a debugging tool where
+/// IndexGraph is intended for for use as a debugging tool where
 /// stable ordering of nodes and especially neighbors/edges are helpful.
 /// IndexGraph can also be used when precise neighbor iteraton order is
 /// required. It may have other applications as well.
 /// 
 /// ```
-/// use gamma::graph::{ Graph, IndexGraph };
+/// use gamma::graph::{ Graph, IndexGraph, Error };
 /// 
-/// let mut graph = IndexGraph::build(vec![
-///     vec![ 1 ],
-///     vec![ 0, 2 ],
-///     vec![ 1 ]
-/// ]).unwrap();
+/// fn main() -> Result<(), Error> {
+///     let mut graph = IndexGraph::build(vec![
+///        vec![ 1 ],
+///        vec![ 0, 2 ],
+///        vec![ 1 ]
+///     ])?;
 /// 
-/// assert_eq!(graph.degree(&1), Ok(2));
+///     assert_eq!(graph.degree(&1), Ok(2));
+/// 
+///     Ok(())
+/// }
 /// ```
 pub struct IndexGraph {
     nodes: Vec<usize>,

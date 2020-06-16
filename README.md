@@ -19,28 +19,29 @@ gamma = "0.2"
 edge iteration order are stable and determined by the `build` function.
 
 ```rust
-use gamma::graph::{ Graph, StableGraph };
+use gamma::graph::{ Graph, StableGraph, Error };
 
-fn main() {
-  let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
-      (0, 1, "a"),
-      (1, 2, "b")
-  ]
-  ).unwrap();
-  
-  assert_eq!(graph.is_empty(), false);
-  assert_eq!(graph.order(), 3);
-  assert_eq!(graph.size(), 2);
-  assert_eq!(graph.nodes().collect::<Vec<_>>(), vec![ &0, &1, &2 ]);
-  assert_eq!(graph.has_node(&0), true);
-  assert_eq!(graph.neighbors(&1).unwrap().collect::<Vec<_>>(), vec![ &0, &2 ]);
-  assert_eq!(graph.degree(&1).unwrap(), 2);
-  assert_eq!(graph.edges().collect::<Vec<_>>(), vec![
-      (&0, &1), (&1, &2)
-  ]);
-  assert_eq!(graph.has_edge(&0, &1).unwrap(), true);
-  assert_eq!(graph.has_edge(&1, &0).unwrap(), true);
-  assert_eq!(graph.has_edge(&0, &2).unwrap(), false);
+fn main() -> Result<(), Error> {
+    let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+        (0, 1, "a"),
+        (1, 2, "b")
+    ])?;
+    
+    assert_eq!(graph.is_empty(), false);
+    assert_eq!(graph.order(), 3);
+    assert_eq!(graph.size(), 2);
+    assert_eq!(graph.nodes().collect::<Vec<_>>(), vec![ &0, &1, &2 ]);
+    assert_eq!(graph.has_node(&0), true);
+    assert_eq!(graph.neighbors(&1)?.collect::<Vec<_>>(), vec![ &0, &2 ]);
+    assert_eq!(graph.degree(&1)?, 2);
+    assert_eq!(graph.edges().collect::<Vec<_>>(), vec![
+        (&0, &1), (&1, &2)
+    ]);
+    assert_eq!(graph.has_edge(&0, &1)?, true);
+    assert_eq!(graph.has_edge(&1, &0)?, true);
+    assert_eq!(graph.has_edge(&0, &2)?, false);
+
+    Ok(())
 }
 ```
 
@@ -57,7 +58,7 @@ let mut graph = IndexGraph::build(vec![
     vec![ 1 ],
     vec![ 0, 2 ],
     vec![ 1 ]
-]).unwrap();
+])?;
 
 assert_eq!(graph.degree(&1), Ok(2));
 ```
@@ -65,44 +66,75 @@ assert_eq!(graph.degree(&1), Ok(2));
 Depth-first traversal is implemented as an `Iterator`.
 
 ```rust
-use gamma::graph::{ Graph, StableGraph };
+use gamma::graph::{ Graph, StableGraph, Error };
 use gamma::traversal::depth_first;
 
-fn main() {
-  let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
-      (0, 1, ()),
-      (1, 2, ()),
-      (2, 0, ()),
-  ]).unwrap();
-  let traversal = depth_first(&graph, &0).unwrap();
-  
-  assert_eq!(traversal.collect::<Vec<_>>(), vec![
-      (&0, &1, false),
-      (&1, &2, false),
-      (&2, &0, true)
-  ]);
+fn main() -> Result<(), Error> {
+    let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+        (0, 1, ()),
+        (1, 2, ()),
+        (2, 0, ()),
+    ])?;
+    let traversal = depth_first(&graph, &0)?;
+    
+    assert_eq!(traversal.collect::<Vec<_>>(), vec![
+        (&0, &1, false),
+        (&1, &2, false),
+        (&2, &0, true)
+    ]);
 }
 ```
 
 Breadth-first traversal is also implemented as an `Iterator`.
 
 ```rust
-use gamma::graph::{ Graph, StableGraph };
+use gamma::graph::{ Graph, StableGraph, Error };
 use gamma::traversal::breadth_first;
 
-fn main() {
-  let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
-      (0, 1, ()),
-      (1, 2, ()),
-      (2, 0, ()),
-  ]).unwrap();
-  let traversal = breadth_first(&graph, &0).unwrap();
-  
-  assert_eq!(traversal.collect::<Vec<_>>(), vec![
-      (&0, &1, false),
-      (&0, &2, false),
-      (&1, &2, true)
-  ]);
+fn main() -> Result<(), Error> {
+    let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+        (0, 1, ()),
+        (1, 2, ()),
+        (2, 0, ()),
+    ])?;
+    let traversal = breadth_first(&graph, &0)?;
+    
+    assert_eq!(traversal.collect::<Vec<_>>(), vec![
+        (&0, &1, false),
+        (&0, &2, false),
+        (&1, &2, true)
+    ]);
+
+    Ok(())
+}
+```
+
+A greedy matching algorithm is provided, with the result returned as a
+`Graph`.
+
+```rust
+use std::collections::HashSet;
+use gamma::graph::{Graph, IndexGraph, Error};
+use gamma::matching::greedy;
+
+fn main() -> Result<(), Error> {
+    let graph = IndexGraph::build(vec![
+        vec![ 1, 5 ],
+        vec![ 0, 2 ],
+        vec![ 1, 3 ],
+        vec![ 2, 4 ],
+        vec![ 3, 5 ],
+        vec![ 4, 0 ]
+    ])?;
+    let matching = greedy(&graph);
+    let mut edges = HashSet::new();
+
+    edges.insert((&0, &1));
+    edges.insert((&2, &3));
+    edges.insert((&4, &5));
+    assert_eq!(matching.edges().collect::<HashSet<_>>(), edges);
+
+    Ok(())
 }
 ```
 

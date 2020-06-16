@@ -13,27 +13,30 @@ use super::{ Graph, WeightedGraph, Error };
 /// iteration order are set by the build function and will remain stable.
 /// 
 /// ```
-/// use gamma::graph::{ Graph, StableGraph};
+/// use gamma::graph::{ Graph, StableGraph, Error };
 /// 
-/// let mut graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
-///     (0, 1, "a"),
-///     (1, 2, "b")
-/// ]
-/// ).unwrap();
+/// fn main() -> Result<(), Error> {
+///     let mut graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
+///         (0, 1, "a"),
+///         (1, 2, "b")
+///     ])?;
 /// 
-/// assert_eq!(graph.is_empty(), false);
-/// assert_eq!(graph.order(), 3);
-/// assert_eq!(graph.size(), 2);
-/// assert_eq!(graph.nodes().collect::<Vec<_>>(), vec![ &0, &1, &2 ]);
-/// assert_eq!(graph.has_node(&0), true);
-/// assert_eq!(graph.neighbors(&1).unwrap().collect::<Vec<_>>(), vec![ &0, &2 ]);
-/// assert_eq!(graph.degree(&1).unwrap(), 2);
-/// assert_eq!(graph.edges().collect::<Vec<_>>(), vec![
-///     (&0, &1), (&1, &2)
-/// ]);
-/// assert_eq!(graph.has_edge(&0, &1).unwrap(), true);
-/// assert_eq!(graph.has_edge(&1, &0).unwrap(), true);
-/// assert_eq!(graph.has_edge(&0, &2).unwrap(), false);
+///     assert_eq!(graph.is_empty(), false);
+///     assert_eq!(graph.order(), 3);
+///     assert_eq!(graph.size(), 2);
+///     assert_eq!(graph.nodes().collect::<Vec<_>>(), vec![ &0, &1, &2 ]);
+///     assert_eq!(graph.has_node(&0), true);
+///     assert_eq!(graph.neighbors(&1).unwrap().collect::<Vec<_>>(), vec![ &0, &2 ]);
+///     assert_eq!(graph.degree(&1).unwrap(), 2);
+///     assert_eq!(graph.edges().collect::<Vec<_>>(), vec![
+///        (&0, &1), (&1, &2)
+///     ]);
+///     assert_eq!(graph.has_edge(&0, &1).unwrap(), true);
+///     assert_eq!(graph.has_edge(&1, &0).unwrap(), true);
+///     assert_eq!(graph.has_edge(&0, &2).unwrap(), false);
+/// 
+///     Ok(())
+/// }
 /// ```
 pub struct StableGraph<N, E> {
     nodes: Vec<Rc<N>>,
