@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use crate::graph::Graph;
 use crate::matching::Matching;
-use crate::traversal::depth_first;
+use crate::traversal::{ depth_first };
 
 /// Attempts a greedy matching. The Graph is traversed in depth-first order
 /// from the first node it iterates. Edges are added to the result if neither
@@ -54,11 +54,11 @@ pub fn greedy<'a, N: 'a+Clone+Eq+Hash>(
     let mut nodes = HashSet::new();
     let mut edges = Vec::new();
 
-    for (source, target, _) in depth_first(graph, root).unwrap() {
-        if !nodes.contains(source) && !nodes.contains(target) {
-            edges.push((source.clone(), target.clone()));
-            nodes.insert(source);
-            nodes.insert(target);
+    for step in depth_first(graph, root).unwrap() {
+        if !nodes.contains(step.source) && !nodes.contains(step.target) {
+            edges.push((step.source.clone(), step.target.clone()));
+            nodes.insert(step.source);
+            nodes.insert(step.target);
         }
     }
 

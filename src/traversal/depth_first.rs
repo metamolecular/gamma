@@ -2,13 +2,14 @@ use std::collections::HashSet;
 use std::hash::Hash;
 
 use crate::graph::{ Graph, Error };
+use super::Step;
 
 /// Implements a depth-first traversal as an edge Iterator. Reports cycle
 /// closure edges.
 /// 
-/// ```
+/// ```rust
 /// use gamma::graph::{ Graph, IndexGraph, Error };
-/// use gamma::traversal::depth_first;
+/// use gamma::traversal::{ depth_first, Step };
 /// 
 /// fn main() -> Result<(), Error> {
 ///     let graph = IndexGraph::build(vec![
@@ -19,9 +20,9 @@ use crate::graph::{ Graph, Error };
 ///     let traversal = depth_first(&graph, &0)?;
 ///
 ///     assert_eq!(traversal.collect::<Vec<_>>(), vec![
-///         (&0, &1, false),
-///         (&1, &2, false),
-///         (&2, &0, true)
+///         Step::new(&0, &1, false),
+///         Step::new(&1, &2, false),
+///         Step::new(&2, &0, true)
 ///     ]);
 /// 
 ///     Ok(())
@@ -54,14 +55,15 @@ pub struct DepthFirst<'a, N, G> {
 
 impl<'a, N, G> Iterator for DepthFirst<'a, N, G>
     where N: Eq + Hash, G: Graph<'a, N> {
-    type Item = (&'a N, &'a N, bool);
+    // type Item = (&'a N, &'a N, bool);
+    type Item = Step<&'a N>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.stack.pop() {
             None => None,
             Some((parent, node)) => {
                 if self.nodes.contains(node) {
-                    Some((parent, node, true))
+                    Some(Step::new(parent, node, true))
                 } else {
                     let neighbors = self.graph.neighbors(node).unwrap()
                         .collect::<Vec<_>>();
@@ -82,7 +84,7 @@ impl<'a, N, G> Iterator for DepthFirst<'a, N, G>
     
                     self.nodes.insert(node);
     
-                    Some((parent, node, false))
+                    Some(Step::new(parent, node, false))
                 }
             }
         }
@@ -120,7 +122,7 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false)
+            Step::new(&0, &1, false)
         ]);
     }
 
@@ -134,8 +136,8 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false)
         ]);
     }
 
@@ -149,8 +151,8 @@ mod tests {
         let traversal = depth_first(&graph, &1).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&1, &0, false),
-            (&1, &2, false)
+            Step::new(&1, &0, false),
+            Step::new(&1, &2, false)
         ]);
     }
 
@@ -165,9 +167,9 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&2, &3, false)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&2, &3, false)
         ]);
     }
 
@@ -181,9 +183,9 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&2, &0, true)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&2, &0, true)
         ]);
     }
 
@@ -198,9 +200,9 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&1, &3, false)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&1, &3, false)
         ]);
     }
 
@@ -215,9 +217,9 @@ mod tests {
         let traversal = depth_first(&graph, &1).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&1, &0, false),
-            (&1, &2, false),
-            (&1, &3, false)
+            Step::new(&1, &0, false),
+            Step::new(&1, &2, false),
+            Step::new(&1, &3, false)
         ]);
     }
 
@@ -232,10 +234,10 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&2, &3, false),
-            (&3, &1, true)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&2, &3, false),
+            Step::new(&3, &1, true)
         ]);
     }
 
@@ -250,10 +252,10 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&2, &0, true),
-            (&2, &3, false)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&2, &0, true),
+            Step::new(&2, &3, false)
         ]);
     }
 
@@ -269,11 +271,11 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&1, &3, false),
-            (&3, &4, false),
-            (&4, &1, true)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&1, &3, false),
+            Step::new(&3, &4, false),
+            Step::new(&4, &1, true)
         ]);
     }
 
@@ -290,13 +292,13 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&2, &5, false),
-            (&5, &4, false),
-            (&4, &3, false),
-            (&3, &2, true),
-            (&5, &0, true)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&2, &5, false),
+            Step::new(&5, &4, false),
+            Step::new(&4, &3, false),
+            Step::new(&3, &2, true),
+            Step::new(&5, &0, true)
         ]);
     }
 
@@ -312,12 +314,12 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&2, &0, true),
-            (&2, &3, false),
-            (&3, &4, false),
-            (&4, &0, true)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&2, &0, true),
+            Step::new(&2, &3, false),
+            Step::new(&3, &4, false),
+            Step::new(&4, &0, true)
         ]);
     }
 
@@ -336,18 +338,18 @@ mod tests {
         let traversal = depth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&2, &3, false),
-            (&3, &0, true),
-            (&3, &7, false),
-            (&7, &6, false),
-            (&6, &5, false),
-            (&5, &4, false),
-            (&4, &7, true),
-            (&4, &0, true),
-            (&5, &1, true),
-            (&6, &2, true)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&2, &3, false),
+            Step::new(&3, &0, true),
+            Step::new(&3, &7, false),
+            Step::new(&7, &6, false),
+            Step::new(&6, &5, false),
+            Step::new(&5, &4, false),
+            Step::new(&4, &7, true),
+            Step::new(&4, &0, true),
+            Step::new(&5, &1, true),
+            Step::new(&6, &2, true)
         ]);
     }
 }

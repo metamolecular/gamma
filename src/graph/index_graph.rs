@@ -29,12 +29,13 @@ pub struct IndexGraph {
 }
 
 impl IndexGraph {
-    /// Builds an IndexGraph from the supplied adjacency Vec. Each
-    /// element of this Vec contains a Vec of neighbors. They will
-    /// be iterated by IndexGraph#neighbors in the order given.
+    /// The elements of adjacency will be validated wo ensure:
     /// 
-    /// Errors will be returned given out-of-bounds indicies, duplicate
-    /// edges, or missing back-edges (this is an indirected graph).
+    /// 1. If there is a fowrard ege, there is a matching backward edge.
+    /// 2. There are no duplicate edges.
+    /// 3. All targets indicies are less than the order of the graph.
+    /// 
+    /// If any test fails, an error is returned.
     pub fn build(
         adjacency: Vec<Vec<usize>>
     ) -> Result<Self, Error> {

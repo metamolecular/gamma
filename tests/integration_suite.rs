@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use gamma::graph::{ Graph, StableGraph };
-use gamma::traversal::{ depth_first, breadth_first };
+use gamma::traversal::{ depth_first, breadth_first, Step };
 
 #[derive(Eq, Hash, PartialEq, Debug)]
 struct Node {
@@ -80,9 +80,9 @@ fn depth_first_c3() {
     let traversal = depth_first(&graph, &0).unwrap();
     
     assert_eq!(traversal.collect::<Vec<_>>(), vec![
-        (&0, &1, false),
-        (&1, &2, false),
-        (&2, &0, true)
+        Step::new(&0, &1, false),
+        Step::new(&1, &2, false),
+        Step::new(&2, &0, true)
     ]);
 }
 
@@ -96,8 +96,8 @@ fn breadth_first_c3() {
     let traversal = breadth_first(&graph, &0).unwrap();
     
     assert_eq!(traversal.collect::<Vec<_>>(), vec![
-        (&0, &1, false),
-        (&0, &2, false),
-        (&1, &2, true)
+        Step::new(&0, &1, false),
+        Step::new(&0, &2, false),
+        Step::new(&1, &2, true)
     ]);
 }

@@ -3,13 +3,14 @@ use std::collections::VecDeque;
 use std::collections::HashSet;
 
 use crate::graph::{ Graph, Error };
+use super::Step;
 
 /// Implements a breadth-first traversal as an edge Iterator. Reports cycle
 /// closure edges.
 /// 
 /// ```rust
 /// use gamma::graph::{ Graph, IndexGraph, Error };
-/// use gamma::traversal::breadth_first;
+/// use gamma::traversal::{ breadth_first, Step };
 /// 
 /// fn main() -> Result<(), Error> {
 ///     let graph = IndexGraph::build(vec![
@@ -21,10 +22,10 @@ use crate::graph::{ Graph, Error };
 ///     let traversal = breadth_first(&graph, &0)?;
 ///
 ///     assert_eq!(traversal.collect::<Vec<_>>(), vec![
-///         (&0, &1, false),
-///         (&0, &3, false),
-///         (&1, &2, false),
-///         (&3, &2, true)
+///         Step::new(&0, &1, false),
+///         Step::new(&0, &3, false),
+///         Step::new(&1, &2, false),
+///         Step::new(&3, &2, true)
 ///     ]);
 /// 
 ///     Ok(())
@@ -56,14 +57,15 @@ pub struct BreadthFirst<'a, N, G> {
 
 impl<'a, N, G> Iterator for BreadthFirst<'a, N, G>
     where N: Eq + Hash, G: Graph<'a, N> {
-    type Item = (&'a N, &'a N, bool);
+    type Item = Step<&'a N>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.queue.pop_back() {
             None => None,
             Some((parent, node)) => {
                 if self.nodes.contains(node) {
-                    Some((parent, node, true))
+                    // Some((parent, node, true))
+                    Some(Step::new(parent, node, true))
                 } else {
                     for neighbor in self.graph.neighbors(node).unwrap() {
                         if neighbor == parent || self.nodes.contains(neighbor) {
@@ -75,7 +77,8 @@ impl<'a, N, G> Iterator for BreadthFirst<'a, N, G>
 
                     self.nodes.insert(node);
     
-                    Some((parent, node, false))
+                    // Some((parent, node, false))
+                    Some(Step::new(parent, node, false))
                 }
             }
         }
@@ -116,7 +119,7 @@ mod tests {
         let traversal = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false)
+            Step::new(&0, &1, false)
         ]);
     }
 
@@ -130,8 +133,8 @@ mod tests {
         let traversal = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false)
         ]);
     }
 
@@ -145,8 +148,8 @@ mod tests {
         let traversal = breadth_first(&graph, &1).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&1, &0, false),
-            (&1, &2, false)
+            Step::new(&1, &0, false),
+            Step::new(&1, &2, false)
         ]);
     }
 
@@ -161,9 +164,9 @@ mod tests {
         let traversal = breadth_first(&graph, &1).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&1, &0, false),
-            (&1, &2, false),
-            (&2, &3, false)
+            Step::new(&1, &0, false),
+            Step::new(&1, &2, false),
+            Step::new(&2, &3, false)
         ]);
     }
 
@@ -178,9 +181,9 @@ mod tests {
         let traversal = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&0, &2, false),
-            (&0, &3, false)
+            Step::new(&0, &1, false),
+            Step::new(&0, &2, false),
+            Step::new(&0, &3, false)
         ]);
     }
 
@@ -195,9 +198,9 @@ mod tests {
         let traversal = breadth_first(&graph, &1).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&1, &0, false),
-            (&0, &2, false),
-            (&0, &3, false)
+            Step::new(&1, &0, false),
+            Step::new(&0, &2, false),
+            Step::new(&0, &3, false)
         ]);
     }
 
@@ -211,9 +214,9 @@ mod tests {
         let traversal = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&0, &2, false),
-            (&1, &2, true)
+            Step::new(&0, &1, false),
+            Step::new(&0, &2, false),
+            Step::new(&1, &2, true)
         ]);
     }
 
@@ -228,10 +231,10 @@ mod tests {
         let traversal = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&0, &3, false),
-            (&1, &2, false),
-            (&3, &2, true)
+            Step::new(&0, &1, false),
+            Step::new(&0, &3, false),
+            Step::new(&1, &2, false),
+            Step::new(&3, &2, true)
         ]);
     }
 
@@ -246,11 +249,11 @@ mod tests {
         let bfs = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(bfs.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&0, &2, false),
-            (&0, &3, false),
-            (&1, &2, true),
-            (&2, &3, true)
+            Step::new(&0, &1, false),
+            Step::new(&0, &2, false),
+            Step::new(&0, &3, false),
+            Step::new(&1, &2, true),
+            Step::new(&2, &3, true)
         ]);
     }
 
@@ -265,10 +268,10 @@ mod tests {
         let bfs = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(bfs.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&1, &2, false),
-            (&1, &3, false),
-            (&2, &3, true)
+            Step::new(&0, &1, false),
+            Step::new(&1, &2, false),
+            Step::new(&1, &3, false),
+            Step::new(&2, &3, true)
         ]);
     }
 
@@ -286,12 +289,12 @@ mod tests {
         let bfs = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(bfs.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&0, &4, false),
-            (&1, &2, false),
-            (&1, &3, false),
-            (&2, &5, false),
-            (&3, &6, false)
+            Step::new(&0, &1, false),
+            Step::new(&0, &4, false),
+            Step::new(&1, &2, false),
+            Step::new(&1, &3, false),
+            Step::new(&2, &5, false),
+            Step::new(&3, &6, false)
         ]);
     }
 
@@ -309,12 +312,12 @@ mod tests {
         let bfs = breadth_first(&graph, &1).unwrap();
 
         assert_eq!(bfs.collect::<Vec<_>>(), vec![
-            (&1, &0, false),
-            (&1, &2, false),
-            (&1, &3, false),
-            (&0, &4, false),
-            (&2, &5, false),
-            (&3, &6, false)
+            Step::new(&1, &0, false),
+            Step::new(&1, &2, false),
+            Step::new(&1, &3, false),
+            Step::new(&0, &4, false),
+            Step::new(&2, &5, false),
+            Step::new(&3, &6, false)
         ]);
     }
 
@@ -330,12 +333,12 @@ mod tests {
         let bfs = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(bfs.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&0, &2, false),
-            (&0, &3, false),
-            (&1, &4, false),
-            (&2, &4, true),
-            (&3, &4, true)
+            Step::new(&0, &1, false),
+            Step::new(&0, &2, false),
+            Step::new(&0, &3, false),
+            Step::new(&1, &4, false),
+            Step::new(&2, &4, true),
+            Step::new(&3, &4, true)
         ]);
     }
 
@@ -353,14 +356,14 @@ mod tests {
         let bfs = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(bfs.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&0, &5, false),
-            (&1, &2, false),
-            (&1, &6, false),
-            (&5, &4, false),
-            (&2, &3, false),
-            (&6, &4, true),
-            (&4, &3, true)
+            Step::new(&0, &1, false),
+            Step::new(&0, &5, false),
+            Step::new(&1, &2, false),
+            Step::new(&1, &6, false),
+            Step::new(&5, &4, false),
+            Step::new(&2, &3, false),
+            Step::new(&6, &4, true),
+            Step::new(&4, &3, true)
         ]);
     }
 
@@ -376,12 +379,12 @@ mod tests {
         let bfs = breadth_first(&graph, &0).unwrap();
 
         assert_eq!(bfs.collect::<Vec<_>>(), vec![
-            (&0, &1, false),
-            (&0, &2, false),
-            (&1, &2, true),
-            (&2, &3, false),
-            (&2, &4, false),
-            (&3, &4, true)
+            Step::new(&0, &1, false),
+            Step::new(&0, &2, false),
+            Step::new(&1, &2, true),
+            Step::new(&2, &3, false),
+            Step::new(&2, &4, false),
+            Step::new(&3, &4, true)
         ]);
     }
 }

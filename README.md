@@ -10,12 +10,12 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gamma = "0.2"
+gamma = "0.5"
 ```
 
 ## Examples
 
-`StableGraph` is the reference `Graph` implementation. Node, edge, and
+`StableGraph` is the reference `Graph` implementation. Node, neighbor, and
 edge iteration order are stable and determined by the `build` function.
 
 ```rust
@@ -53,21 +53,47 @@ useful for algorithm debugging.
 
 ```rust
 use gamma::graph::{ Graph, IndexGraph };
- 
-let mut graph = IndexGraph::build(vec![
-    vec![ 1 ],
-    vec![ 0, 2 ],
-    vec![ 1 ]
-])?;
 
-assert_eq!(graph.degree(&1), Ok(2));
+fn main() -> Result<(), Error> {
+    let mut graph = IndexGraph::build(vec![
+        vec![ 1 ],
+        vec![ 0, 2 ],
+        vec![ 1 ]
+    ])?;
+    
+    assert_eq!(graph.degree(&1), Ok(2));
+
+    Ok(())
+}
+ 
+```
+
+In `HashGraph`, node and edge iterator order are unstable. Use this
+implementation when you don't need edge weights or stable iteration order.
+
+```rust
+use std::collections::HashMap;
+use gamma::graph::{ Graph, HashGraph };
+
+fn main() -> Result<(), Error> {
+    let mut adjacency = HashMap::new();
+
+    adjacency.insert('A', vec![ 'B' ]);
+    adjacency.insert('B', vec![ 'A' ]);
+
+    let mut graph = HashGraph::build(adjacency)?;
+
+    assert_eq!(graph.degree(&'A'), Ok(1));
+
+    Ok(())
+}
 ```
 
 Depth-first traversal is implemented as an `Iterator`.
 
 ```rust
 use gamma::graph::{ Graph, StableGraph, Error };
-use gamma::traversal::depth_first;
+use gamma::traversal::{ depth_first, Step };
 
 fn main() -> Result<(), Error> {
     let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
@@ -78,9 +104,9 @@ fn main() -> Result<(), Error> {
     let traversal = depth_first(&graph, &0)?;
     
     assert_eq!(traversal.collect::<Vec<_>>(), vec![
-        (&0, &1, false),
-        (&1, &2, false),
-        (&2, &0, true)
+        Step::new(&0, &1, false),
+        Step::new(&1, &2, false),
+        Step::new(&2, &0, true)
     ]);
 }
 ```
@@ -89,7 +115,7 @@ Breadth-first traversal is also implemented as an `Iterator`.
 
 ```rust
 use gamma::graph::{ Graph, StableGraph, Error };
-use gamma::traversal::breadth_first;
+use gamma::traversal::{ breadth_first, Step };
 
 fn main() -> Result<(), Error> {
     let graph = StableGraph::build(vec![ 0, 1, 2 ], vec![
@@ -100,9 +126,9 @@ fn main() -> Result<(), Error> {
     let traversal = breadth_first(&graph, &0)?;
     
     assert_eq!(traversal.collect::<Vec<_>>(), vec![
-        (&0, &1, false),
-        (&0, &2, false),
-        (&1, &2, true)
+        Step::new(&0, &1, false),
+        Step::new(&0, &2, false),
+        Step::new(&1, &2, true)
     ]);
 
     Ok(())
@@ -132,7 +158,28 @@ fn main() -> Result<(), Error> {
     edges.insert((&0, &1));
     edges.insert((&2, &3));
     edges.insert((&4, &5));
+
     assert_eq!(matching.edges().collect::<HashSet<_>>(), edges);
+
+    Ok(())
+}
+```
+
+A `Graph`'s connected components are also reported as an Iterator.
+
+```rust
+use gamma::graph::{ Graph, IndexGraph };
+use gamma::selection::components;
+
+fn main() -> Result<(), Error> {
+    let mut graph = IndexGraph::build(vec![
+        vec![ 1 ],
+        vec![ 0 ],
+        vec![ ]
+    ])?;
+    let components = components(&graph).collect::<Vec<_>>();
+
+    assert_eq!(components.len(), 2);
 
     Ok(())
 }
