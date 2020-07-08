@@ -11,4 +11,3 @@ Graph primitives and traversals for Rust.
 """
 
 [dependencies]
-indexmap = "1.4.0"
