@@ -1,8 +1,8 @@
-# Tinygraph
+# Gamma
 
 A graph library for Rust.
 
-Tinygraph provides primitives and traversals for working with [graphs](https://en.wikipedia.org/wiki/Graph_theory). It is based on ideas presented in *[A Minimal Graph API](https://depth-first.com/articles/2020/01/06/a-minimal-graph-api/)*.
+Gamma provides primitives and traversals for working with [graphs](https://en.wikipedia.org/wiki/Graph_theory). It is based on ideas presented in *[A Minimal Graph API](https://depth-first.com/articles/2020/01/06/a-minimal-graph-api/)*.
 
 ## Usage
 
@@ -10,7 +10,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tinygraph = 0.6.0
+gamma = 0.6.0
 ```
 
 ## Examples
@@ -19,7 +19,7 @@ tinygraph = 0.6.0
 edge iteration order are stable and determined by the `from_adjacency` function.
 
 ```rust
-use tinygraph::graph::{ Graph, ArrayGraph, Error };
+use gamma::graph::{ Graph, ArrayGraph, Error };
 
 fn main() -> Result<(), Error> {
     let p3 = ArrayGraph::from_adjacency(vec![
@@ -60,8 +60,7 @@ Features include:
 
 ## Versions
 
-Tinygraph is not yet stable, but care is taken to limit breaking changes whenever
-possible. Patch versions never introduce breaking changes.
+Gamma is not yet stable, but care is taken to limit breaking changes whenever possible. Patch versions never introduce breaking changes.
 
 ## License
 
