@@ -1,8 +1,7 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug,PartialEq,Eq)]
 pub enum Error {
-    UnknownNode,
-    InvalidEdge,
-    DuplicateEdge,
-    DuplicateNode,
-    MissingEdge
+    MissingNode(usize),
+    DuplicateNode(usize),
+    MissingEdge(usize, usize),
+    DuplicateEdge(usize, usize)
 }

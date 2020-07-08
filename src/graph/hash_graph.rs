@@ -1,94 +1,150 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
-use std::hash::Hash;
+use std::collections::hash_map::Entry;
 
-use super::{ Graph, Error };
+use super::{ Graph, Error, Step };
 
-/// An undirected, node-labeled Graph. Node, and edge order are undefined.
-/// Neighbor order remains stable. As such, HashGraph can be tought of as
-/// the hashed node counterpart to IndexGraph.
-/// 
-/// Note that not only is the order of edges obtained from #edges undefined,
-/// but the order in which nodes appear within each tuple is also undefined.
+/// A Graph backed by an adjacency map. Nodes will not necessarily be iterated
+/// in numerical order, but all iteration orders are stable. As such,
+/// HashGraph works well when extracting subgraphs from other graphs.
 /// 
 /// ```rust
-/// use std::collections::HashMap;
-/// 
-/// use gamma::graph::{ Graph, HashGraph, Error };
+/// use gamma::graph::{ Graph, HashGraph, Error, Step };
 /// 
 /// fn main() -> Result<(), Error> {
-///     let mut adjacency = HashMap::new();
+///     let c3 = HashGraph::from_traversal(0, vec![
+///         Step::new(0, 1, false),
+///         Step::new(1, 2, false),
+///         Step::new(2, 0, true)
+///     ])?;
 /// 
-///     adjacency.insert('A', vec![ 'B' ]);
-///     adjacency.insert('B', vec![ 'A', 'C' ]);
-///     adjacency.insert('C', vec![ 'B' ]);
+///     assert_eq!(c3.nodes().to_vec(), vec![ 0, 1, 2 ]);
 /// 
-///     let mut graph = HashGraph::build(adjacency)?;
+///     let result = HashGraph::from_traversal(0, vec![
+///         Step::new(0, 1, false),
+///         Step::new(1, 0, false)
+///     ]);
 /// 
-///     assert_eq!(graph.degree(&'B'), Ok(2));
+///     assert_eq!(result, Err(Error::DuplicateEdge(1, 0)));
 /// 
 ///     Ok(())
 /// }
 /// ```
-pub struct HashGraph<N> {
-    adjacency: HashMap<N, Vec<N>>,
-    edges: HashSet<(N, N)>
+/// 
+#[derive(Debug, PartialEq)]
+pub struct HashGraph {
+    adjacency: HashMap<usize, Vec<usize>>,
+    edges: Vec<(usize, usize)>,
+    nodes: Vec<usize>
 }
 
-impl<'a, N: 'a+Hash+Eq+Clone> HashGraph<N> {
-    /// The elements of adjacency will be validated to ensure:
-    /// 
-    /// 1. If there is a forward edge, there is a matching back edge.
-    /// 2. There are no duplicate edges.
-    /// 3. All targets are present as keys.
-    /// 4. No loops (self-edges) are present.
-    /// 
-    /// If any test fails, an error is returned.
-    pub fn build(adjacency: HashMap<N, Vec<N>>) -> Result<Self, Error> {
-        let mut directed = HashSet::new();
+impl HashGraph {
+    /// Builds from a traversal. Returns an error given:
+    /// - a Step source has not been seen before
+    /// - duplicate edge forward or reversed
+    pub fn from_traversal(
+        root: usize, steps: Vec<Step>
+    ) -> Result<Self, Error> {
+        let mut adjacency = HashMap::new();
+        let mut edges = Vec::new();
+        let mut nodes = Vec::new();
 
-        for (source, source_neighbors) in adjacency.iter() {
-            for target in source_neighbors {
-                if target == source {
-                    return Err(Error::InvalidEdge);
-                } else if !adjacency.contains_key(target) {
-                    return Err(Error::UnknownNode);
+        adjacency.insert(root, vec![ ]);
+        nodes.push(root);
+
+        for step in steps {
+            let Step { sid, tid, cut } = step;
+
+            let neighbors = match adjacency.get_mut(&sid) {
+                Some(neighbors) => neighbors,
+                None => return Err(Error::MissingNode(sid))
+            };
+
+            neighbors.push(tid);
+
+            match adjacency.entry(tid) {
+                Entry::Occupied(occupied) => {
+                    if cut {
+                        if occupied.get().contains(&sid) {
+                            return Err(Error::DuplicateEdge(sid, tid));
+                        }
+                    } else {
+                        return Err(Error::DuplicateEdge(sid, tid));
+                    }
+                },
+                Entry::Vacant(vacant) => {
+                    vacant.insert(vec![ sid ]);
                 }
+            }
 
-                if !directed.insert((source, target)) {
-                    return Err(Error::DuplicateEdge);
+            edges.push((sid, tid));
+
+            if !cut {
+                nodes.push(tid);
+            }
+        }
+
+
+        Ok(HashGraph { adjacency, edges, nodes })
+    }
+
+    /// Builds a node-induced subgraph from edges. Returns error given:
+    /// - duplicate edge forward or reversed
+    pub fn from_edges(
+        edges: Vec<(usize, usize)>, singletons: Vec<usize>
+    ) -> Result<Self, Error> {
+        let mut nodes = Vec::new();
+        let mut adjacency: HashMap<usize, Vec<usize>> = HashMap::new();
+
+        for (sid, tid) in edges.iter() {
+            match adjacency.entry(*sid) {
+                Entry::Occupied(mut entry) => {
+                    let neighbors = entry.get_mut();
+
+                    if neighbors.contains(tid) {
+                        return Err(Error::DuplicateEdge(*sid, *tid));
+                    } else {
+                        neighbors.push(*tid);
+                    }
+                },
+                Entry::Vacant(entry) => {
+                    entry.insert(vec![ *tid ]);
+                    nodes.push(*sid);
+                }
+            }
+
+            match adjacency.entry(*tid) {
+                Entry::Occupied(mut entry) => {
+                    let neighbors = entry.get_mut();
+
+                    if neighbors.contains(sid) {
+                        return Err(Error::DuplicateEdge(*sid, *tid));
+                    } else {
+                        neighbors.push(*sid);
+                    }
+                },
+                Entry::Vacant(entry) => {
+                        entry.insert(vec![ *sid ]);
+                        nodes.push(*tid);
+                }
+            }
+        }
+        
+        for singleton in singletons {
+            match adjacency.entry(singleton) {
+                Entry::Occupied(_) =>
+                    return Err(Error::DuplicateNode(singleton)),
+                Entry::Vacant(entry) => {
+                    nodes.push(singleton);
+                    entry.insert(vec![ ]);
                 }
             }
         }
 
-        let mut undirected = HashSet::new();
-
-        for (source, target) in directed {
-            let mut edge = (target.clone(), source.clone());
-
-            if !undirected.contains(&edge) {
-                std::mem::swap(&mut edge.0, &mut edge.1);
-
-                undirected.insert(edge);
-            }
-        }
-
-        Ok(Self { adjacency, edges: undirected })
-    }
-
-    fn neighbors_for(&'a self, node: &N) -> Result<&'a Vec<N>, Error> {
-        match self.adjacency.get(node) {
-            Some(neighbors) => Ok(neighbors),
-            None => Err(Error::UnknownNode)
-        }
+        Ok(HashGraph { nodes, edges, adjacency })
     }
 }
 
-impl<'a, N: 'a+Hash+Eq+Clone> Graph<'a, N> for HashGraph<N> {
-    type NodeIterator = std::collections::hash_map::Keys<'a, N, Vec<N>>;
-    type NeighborIterator = std::slice::Iter<'a, N>;
-    type EdgeIterator = EdgeIterator<'a, N>;
-
+impl Graph for HashGraph {
     fn is_empty(&self) -> bool {
         self.adjacency.is_empty()
     }
@@ -101,362 +157,379 @@ impl<'a, N: 'a+Hash+Eq+Clone> Graph<'a, N> for HashGraph<N> {
         self.edges.len()
     }
 
-    fn nodes(&'a self) -> Self::NodeIterator {
-        self.adjacency.keys()
+    fn nodes(&self) -> &[usize] {
+        &self.nodes[..]
     }
 
-    fn has_node(&self, node: &N) -> bool {
-        self.adjacency.contains_key(node)
-    }
-
-    fn neighbors(&'a self, node: &N) -> Result<Self::NeighborIterator, Error> {
-        Ok(self.neighbors_for(node)?.iter())
-    }
-
-    fn degree(&self, node: &N) -> Result<usize, Error> {
-        Ok(self.neighbors_for(node)?.len())
-    }
-
-    fn edges(&'a self) -> Self::EdgeIterator {
-        EdgeIterator { iter: self.edges.iter() }
-    }
-
-    fn has_edge(&self, source: &N, target: &N) -> Result<bool, Error> {
-        if self.neighbors_for(source)?.contains(target) {
-            Ok(true)
-        } else {
-            if self.adjacency.contains_key(target) {
-                Ok(false)
-            } else {
-                Err(Error::UnknownNode)
-            }
+    fn neighbors(&self, id: usize) -> Result<&[usize], Error> {
+        match self.adjacency.get(&id) {
+            Some(neighbors) => Ok(&neighbors[..]),
+            None => Err(Error::MissingNode(id))
         }
     }
-}
+    
+    fn has_node(&self, id: usize) -> bool {
+        self.adjacency.contains_key(&id)
+    }
 
-pub struct EdgeIterator<'a, N> {
-    iter: std::collections::hash_set::Iter<'a, (N, N)>
-}
+    fn degree(&self, id: usize) -> Result<usize, Error> {
+        Ok(self.neighbors(id)?.len())
+    }
 
-impl<'a, N: Eq+Hash+Clone> Iterator for EdgeIterator<'a, N> {
-    type Item = (&'a N, &'a N);
+    fn edges(&self) -> &[(usize, usize)] {
+        &self.edges[..]
+    }
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|edge| (&edge.0, &edge.1))
+    fn has_edge(&self, sid: usize, tid: usize) -> Result<bool, Error> {
+        let neighbors = self.neighbors(sid)?;
+
+        if self.adjacency.contains_key(&tid) {
+            Ok(neighbors.contains(&tid))
+        } else {
+            Err(Error::MissingNode(tid))
+        }
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod from_adjacency {
     use super::*;
 
-    macro_rules! map(
-        { $($key:expr => $value:expr),+ } => {
-            {
-                let mut m = ::std::collections::HashMap::new();
-                $(
-                    m.insert($key, $value);
-                )+
-                m
-            }
-         };
-    );
+    #[test]
+    fn given_missing_source() {
+        let graph = HashGraph::from_traversal(2, vec![
+            Step::new(3, 4, false)
+        ]);
 
-    #[derive(Eq, Hash, PartialEq, Debug)]
-    struct Node {
-        value: u8
-    }
-
-    impl Node {
-        fn new(value: u8) -> Self {
-            Node { value }
-        }
+        assert_eq!(graph, Err(Error::MissingNode(3)));
     }
 
     #[test]
-    fn build_given_unknown_target() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1] ]
-        });
+    fn given_duplicate_target() {
+        let graph = HashGraph::from_traversal(2, vec![
+            Step::new(2, 5, false),
+            Step::new(2, 5, false)
+        ]);
 
-        assert_eq!(graph.err(), Some(Error::UnknownNode));
+        assert_eq!(graph, Err(Error::DuplicateEdge(2, 5)));
     }
 
     #[test]
-    fn build_given_self_target() {
-        let nodes = vec![ Node::new(0) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[0] ]
-        });
+    fn given_duplicate_target_reversed() {
+        let graph = HashGraph::from_traversal(2, vec![
+            Step::new(2, 5, false),
+            Step::new(5, 2, false)
+        ]);
 
-        assert_eq!(graph.err(), Some(Error::InvalidEdge));
+        assert_eq!(graph, Err(Error::DuplicateEdge(5, 2)));
     }
 
     #[test]
-    fn build_given_duplicate_edge() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1], &nodes[1] ],
-            &nodes[1] => vec![ &nodes[0] ]
-        });
+    fn given_foo_back_edge_as_cut() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false),
+            Step::new(1, 0, true)
+        ]);
 
-        assert_eq!(graph.err(), Some(Error::DuplicateEdge));
+        assert_eq!(graph, Err(Error::DuplicateEdge(1, 0)));
     }
 
     #[test]
-    fn is_empty_given_empty() {
-        let graph = HashGraph::<()>::build(HashMap::new()).unwrap();
+    fn is_emtpy() {
+        let graph = HashGraph::from_traversal(0, vec![ ]).unwrap();
 
-        assert!(graph.is_empty());
+        assert_eq!(graph.is_empty(), false);
     }
 
     #[test]
-    fn is_empty_given_p2() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1] ],
-            &nodes[1] => vec![ &nodes[0] ]
-        }).unwrap();
+    fn order() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false)
+        ]).unwrap();
 
-        assert!(!graph.is_empty());
+        assert_eq!(graph.order(), 2);
     }
 
     #[test]
-    fn order_given_empty() {
-        let graph = HashGraph::<()>::build(HashMap::new()).unwrap();
+    fn order_given_cut() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false),
+            Step::new(1, 2, false),
+            Step::new(2, 0, true)
+        ]).unwrap();
 
-        assert_eq!(graph.order(), 0);
+        assert_eq!(graph.order(), 3);
     }
 
     #[test]
-    fn order_given_p1() {
-        let nodes = vec![ Node::new(0) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ ]
-        }).unwrap();
-
-        assert_eq!(graph.order(), 1);
-    }
-
-    #[test]
-    fn size_given_empty() {
-        let graph = HashGraph::<()>::build(HashMap::new()).unwrap();
-
-        assert_eq!(graph.size(), 0);
-    }
-
-    #[test]
-    fn size_given_p3() {
-        let nodes = vec![ Node::new(0), Node::new(1), Node::new(2) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1] ],
-            &nodes[1] => vec![ &nodes[0], &nodes[2] ],
-            &nodes[2] => vec![ &nodes[1] ]
-        }).unwrap();
+    fn size() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false),
+            Step::new(0, 2, false)
+        ]).unwrap();
 
         assert_eq!(graph.size(), 2);
     }
 
     #[test]
-    fn nodes_given_empty() {
-        let graph = HashGraph::<()>::build(HashMap::new()).unwrap();
-        let nodes = graph.nodes().collect::<Vec<_>>();
+    fn size_given_cut() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false),
+            Step::new(1, 2, false),
+            Step::new(2, 0, true)
+        ]).unwrap();
 
-        assert!(nodes.is_empty());
+        assert_eq!(graph.size(), 3);
     }
 
     #[test]
-    fn nodes_given_p3() {
-        let nodes = vec![ Node::new(0), Node::new(1), Node::new(2) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1] ],
-            &nodes[1] => vec![ &nodes[0], &nodes[2] ],
-            &nodes[2] => vec![ &nodes[1] ]
-        }).unwrap();
+    fn nodes() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false),
+            Step::new(0, 2, false)
+        ]).unwrap();
 
-        assert_eq!(
-            graph.nodes().cloned().collect::<HashSet<_>>(),
-            nodes.iter().collect::<HashSet<_>>()
-        )
+        assert_eq!(graph.nodes().to_vec(), vec![ 0, 1, 2 ]);
     }
 
     #[test]
-    fn has_node_given_outside() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ ]
-        }).unwrap();
+    fn nodes_given_cut() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false),
+            Step::new(1, 2, false),
+            Step::new(2, 0, true)
+        ]).unwrap();
 
-        assert!(!graph.has_node(&&nodes[1]));
-    }
-
-    #[test]
-    fn has_node_given_inside() {
-        let nodes = vec![ Node::new(0)];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ ]
-        }).unwrap();
-
-        assert!(graph.has_node(&&nodes[0]));
+        assert_eq!(graph.nodes().to_vec(), vec![ 0, 1, 2 ]);
     }
 
     #[test]
     fn neighbors_given_outside() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ ]
-        }).unwrap();
-        let result = graph.neighbors(&&nodes[1]);
+        let graph = HashGraph::from_traversal(0, vec![ ]).unwrap();
 
-        assert_eq!(result.err(), Some(Error::UnknownNode));
+        assert_eq!(graph.neighbors(1), Err(Error::MissingNode(1)));
     }
 
     #[test]
-    fn neighbors_given_p1() {
-        let nodes = vec![ Node::new(0) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ ]
-        }).unwrap();
-        let neighbors = graph.neighbors(&&nodes[0]).unwrap();
+    fn neighbors_given_p3_inner() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false),
+            Step::new(1, 2, false)
+        ]).unwrap();
 
-        assert!(neighbors.collect::<Vec<_>>().is_empty());
+        assert_eq!(graph.neighbors(1).unwrap().to_vec(), vec![ 0, 2 ]);
     }
 
     #[test]
-    fn neighbors_given_p2() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1] ],
-            &nodes[1] => vec![ &nodes[0] ]
-        }).unwrap();
-        let neighbors = graph.neighbors(&&nodes[0]).unwrap();
+    fn has_node_given_outside() {
+        let graph = HashGraph::from_traversal(0, vec![ ]).unwrap();
 
-        assert_eq!(neighbors.collect::<Vec<_>>(), vec![ &&nodes[1] ]);
+        assert_eq!(graph.has_node(1), false);
     }
 
     #[test]
-    fn neighbors_given_p3_secondary() {
-        let nodes = vec![ Node::new(0), Node::new(1), Node::new(2) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1] ],
-            &nodes[1] => vec![ &nodes[0], &nodes[2] ],
-            &nodes[2] => vec![ &nodes[1] ]
-        }).unwrap();
-        let neighbors = graph.neighbors(&&nodes[1]).unwrap();
+    fn has_node_given_inside() {
+        let graph = HashGraph::from_traversal(0, vec![ ]).unwrap();
 
-        assert_eq!(neighbors.collect::<Vec<_>>(), vec![
-            &&nodes[0], &&nodes[2]
-        ]);
+        assert_eq!(graph.has_node(0), true);
     }
 
     #[test]
     fn degree_given_outside() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ ]
-        }).unwrap();
-        let result = graph.degree(&&nodes[1]);
+        let graph = HashGraph::from_traversal(0, vec![ ]).unwrap();
 
-        assert_eq!(result.err(), Some(Error::UnknownNode));
+        assert_eq!(graph.degree(1), Err(Error::MissingNode(1)));
     }
 
     #[test]
-    fn degree_given_p3_secondary() {
-        let nodes = vec![ Node::new(0), Node::new(1), Node::new(2) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1] ],
-            &nodes[1] => vec![ &nodes[0], &nodes[2] ],
-            &nodes[2] => vec![ &nodes[1] ]
-        }).unwrap();
+    fn edges() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false),
+            Step::new(1, 2, false),
+            Step::new(2, 0, true)
+        ]).unwrap();
 
-        assert_eq!(graph.degree(&&nodes[1]).unwrap(), 2);
+        assert_eq!(graph.edges().to_vec(), vec![
+            (0, 1),
+            (1, 2),
+            (2, 0)
+        ]);
     }
 
     #[test]
-    fn edges_given_empty() {
-        let graph = HashGraph::<()>::build(HashMap::new()).unwrap();
-        let edges = graph.edges().collect::<Vec<_>>();
+    fn has_edge_give_source_outside() {
+        let graph = HashGraph::from_traversal(0, vec![ ]).unwrap();
 
-        assert!(edges.is_empty());
+        assert_eq!(graph.has_edge(1, 0), Err(Error::MissingNode(1)));
     }
 
     #[test]
-    fn edges_given_p3_secondary() {
-        let n0 = &Node::new(0);
-        let n1 = &Node::new(1);
-        let n2 = &Node::new(2);
-        let graph = HashGraph::build(map!{
-            n0 => vec![ n1 ],
-            n1 => vec![ n0, n2 ],
-            n2 => vec![ n1 ]
-        }).unwrap();
-        let mut found = HashSet::new();
-        let mut count = 0;
+    fn has_edge_give_target_outside() {
+        let graph = HashGraph::from_traversal(0, vec![ ]).unwrap();
 
-        for (source, target) in graph.edges() {
-            found.insert((source, target));
-            assert!(graph.has_edge(source, target).unwrap());
-
-            count += 1;
-        }
-
-        assert_eq!(count, 2);
-        assert_eq!(found.len(), 2);
+        assert_eq!(graph.has_edge(0, 1), Err(Error::MissingNode(1)));
     }
 
     #[test]
-    fn has_edge_given_outside_source() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ ]
-        }).unwrap();
-        let result = graph.has_edge(&&nodes[1], &&nodes[0]);
+    fn has_edge_given_unconnected() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false),
+            Step::new(1, 2, false)
+        ]).unwrap();
 
-        assert_eq!(result.err(), Some(Error::UnknownNode));
+        assert_eq!(graph.has_edge(0, 2), Ok(false));
     }
 
     #[test]
-    fn has_edge_given_outside_target() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ ]
-        }).unwrap();
-        let result = graph.has_edge(&&nodes[0], &&nodes[1]);
+    fn has_edge_given_connected() {
+        let graph = HashGraph::from_traversal(0, vec![
+            Step::new(0, 1, false)
+        ]).unwrap();
 
-        assert_eq!(result.err(), Some(Error::UnknownNode));
+        assert_eq!(graph.has_edge(0, 1), Ok(true));
+    }
+}
+
+#[cfg(test)]
+mod from_edges {
+    use super::*;
+
+    #[test]
+    fn given_duplicate_edge() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (0, 1)
+        ], vec![ ]);
+
+        assert_eq!(graph, Err(Error::DuplicateEdge(0, 1)));
     }
 
     #[test]
-    fn has_edge_given_unconnnected() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ ],
-            &nodes[1] => vec![ ]
-        }).unwrap();
+    fn given_duplicate_edge_reversed() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (1, 0)
+        ], vec![ ]);
 
-        assert!(!graph.has_edge(&&nodes[0], &&nodes[1]).unwrap());
+        assert_eq!(graph, Err(Error::DuplicateEdge(1, 0)));
     }
 
     #[test]
-    fn has_edge_given_connnected() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1] ],
-            &nodes[1] => vec![ &nodes[0] ]
-        }).unwrap();
+    fn given_duplicate_singleton() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1)
+        ], vec![ 1 ]);
 
-        assert!(graph.has_edge(&&nodes[0], &&nodes[1]).unwrap());
+        assert_eq!(graph, Err(Error::DuplicateNode(1)));
     }
 
     #[test]
-    fn has_edge_given_connnected_and_reversed() {
-        let nodes = vec![ Node::new(0), Node::new(1) ];
-        let graph = HashGraph::build(map!{
-            &nodes[0] => vec![ &nodes[1] ],
-            &nodes[1] => vec![ &nodes[0] ]
-        }).unwrap();
+    fn is_empty() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1)
+        ], vec![ ]).unwrap();
 
-        assert!(graph.has_edge(&&nodes[1], &&nodes[0]).unwrap());
+        assert_eq!(graph.is_empty(), false);
+    }
+
+    #[test]
+    fn order() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (1, 2),
+            (2, 3)
+        ], vec![ ]).unwrap();
+
+        assert_eq!(graph.order(), 4);
+    }
+
+    #[test]
+    fn size() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (1, 2),
+            (2, 3)
+        ], vec![ ]).unwrap();
+
+        assert_eq!(graph.size(), 3);
+    }
+    
+    #[test]
+    fn nodes() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (1, 2),
+            (2, 3)
+        ], vec![ ]).unwrap();
+
+        assert_eq!(graph.nodes(), &[ 0, 1, 2, 3 ]);
+    }
+
+    #[test]
+    fn nodes_given_singleton() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1)
+        ], vec![ 2 ]).unwrap();
+
+        assert_eq!(graph.nodes(), &[ 0, 1, 2 ]);
+    }
+
+    #[test]
+    fn neighbors() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (1, 2),
+            (2, 3)
+        ], vec![ ]).unwrap();
+
+        assert_eq!(graph.neighbors(1).unwrap(), &[ 0, 2 ]);
+    }
+
+    #[test]
+    fn has_node() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (1, 2),
+            (2, 3)
+        ], vec![ ]).unwrap();
+
+        assert_eq!(graph.has_node(9), false);
+    }
+
+    #[test]
+    fn degree() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (1, 2),
+            (2, 3)
+        ], vec![ ]).unwrap();
+
+        assert_eq!(graph.degree(1), Ok(2));
+    }
+
+    #[test]
+    fn edges() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (2, 3),
+            (1, 2)
+        ], vec![ ]).unwrap();
+
+        assert_eq!(graph.edges(), &[
+            (0, 1),
+            (2, 3),
+            (1, 2)
+        ]);
+    }
+
+    #[test]
+    fn has_edge() {
+        let graph = HashGraph::from_edges(vec![
+            (0, 1),
+            (1, 2),
+            (2, 3)
+        ], vec![ ]).unwrap();
+
+        assert_eq!(graph.has_edge(2, 1), Ok(true));
     }
 }

@@ -1,169 +1,157 @@
-use std::hash::Hash;
 use std::collections::HashSet;
 
-use crate::graph::Graph;
-use crate::matching::Matching;
-use crate::traversal::{ depth_first };
+use crate::graph::{ Graph, Step };
+use crate::selection::components;
+use crate::traversal::depth_first;
 
-/// Attempts a greedy matching. The Graph is traversed in depth-first order
-/// from the first node it iterates. Edges are added to the result if neither
-/// terminal has been added already. Bipartate graphs always
-/// return a perfect Matching. Non-bipartate graphs yield either maximal
-/// or maximum Matchings.
+/// Returns a greedy matching over all componenents of the Graph. Bipartate
+/// graphs always return a perfect Matching. Non-bipartate graphs yield either
+/// maximal or maximum Matchings.
 /// 
 /// Because a greedy Matching can be used as a starting point to a more
 /// sophisticated matching procedure (e.g., Edmund's Blossom), it usually
 /// makes sense to try a greedy matching and only fall back to a more advanced
-/// procedure if the Matching isn't perfect.
+/// procedure if the matching isn't perfect.
 /// 
 /// For more on matching, see: *[The Maximum Matching Problem](https://depth-first.com/articles/2019/04/02/the-maximum-matching-problem/)*.
 /// 
 /// ```rust
-/// use std::collections::HashSet;
-/// use gamma::graph::{Graph, IndexGraph, Error};
+/// use gamma::graph::{ Graph, Error, ArrayGraph };
 /// use gamma::matching::greedy;
 /// 
 /// fn main() -> Result<(), Error> {
-///     let graph = IndexGraph::build(vec![
-///         vec![ 1, 5 ],
+///     let graph = ArrayGraph::from_adjacency(vec![
+///         vec![ 1 ],
 ///         vec![ 0, 2 ],
-///         vec![ 1, 3 ],
-///         vec![ 2, 4 ],
-///         vec![ 3, 5 ],
-///         vec![ 4, 0 ]
+///         vec![ 1 ]
 ///     ])?;
-///     let matching = greedy(&graph);
-///     let mut edges = HashSet::new();
-///
-///     edges.insert((&0, &1));
-///     edges.insert((&2, &3));
-///     edges.insert((&4, &5));
-///     assert_eq!(matching.edges().collect::<HashSet<_>>(), edges);
+///     let edges = greedy(&graph);
 /// 
+///     assert_eq!(edges, vec![
+///         (0, 1)
+///     ]);
+///     
 ///     Ok(())
 /// }
 /// ```
-pub fn greedy<'a, N: 'a+Clone+Eq+Hash>(
-    graph: &'a impl Graph<'a, N>
-) -> Matching<N> {
-    let root = match graph.nodes().next() {
-        Some(root) => root,
-        None => return Matching::build(vec![ ]).unwrap()
-    };
-
-    let mut nodes = HashSet::new();
+/// 
+pub fn greedy<G: Graph>(
+    graph: &G
+) -> Vec<(usize, usize)> {
     let mut edges = Vec::new();
+    let mut nodes = HashSet::new();
 
-    for step in depth_first(graph, root).unwrap() {
-        if !nodes.contains(step.source) && !nodes.contains(step.target) {
-            edges.push((step.source.clone(), step.target.clone()));
-            nodes.insert(step.source);
-            nodes.insert(step.target);
+    for graph in components(graph) {
+        let traversal = depth_first(&graph, graph.nodes()[0]).expect(
+            "depth-first traversal failed"
+        );
+
+        for Step { sid, tid, cut: _ } in traversal {
+            if nodes.insert(sid) && nodes.insert(tid) {
+                edges.push((sid, tid));
+            }
         }
     }
 
-    Matching::build(edges).unwrap()
+    edges
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::IndexGraph;
-
-    macro_rules! set {
-        ( $( $x:expr ), * ) => {
-            {
-                #[allow(unused_mut)]
-                let mut set = HashSet::new();
-
-                $(
-                    set.insert($x);
-                )*
-
-                set
-            }
-        };
-    }
+    use crate::graph::ArrayGraph;
 
     #[test]
     fn empty() {
-        let graph = IndexGraph::build(vec![ ]).unwrap();
-        let matching = greedy(&graph);
+        let graph = ArrayGraph::new();
+        let result = greedy(&graph);
 
-        assert!(matching.is_empty());
+        assert_eq!(result.is_empty(), true);
     }
 
     #[test]
     fn p1() {
-        let graph = IndexGraph::build(vec![
-            vec! [ ]
+        let graph = ArrayGraph::from_adjacency(vec![
+            vec![ ]
         ]).unwrap();
-        let matching = greedy(&graph);
 
-        assert!(matching.is_empty());
+        assert_eq!(greedy(&graph), vec![ ]);
     }
 
     #[test]
     fn p2() {
-        let graph = IndexGraph::build(vec![
+        let graph = ArrayGraph::from_adjacency(vec![
             vec![ 1 ],
             vec![ 0 ]
         ]).unwrap();
-        let matching = greedy(&graph);
 
-        assert_eq!(matching.edges().collect::<HashSet<_>>(), set![
-            (&0, &1)
+        assert_eq!(greedy(&graph), vec![
+            (0, 1)
+        ]);
+    }
+
+    #[test]
+    fn p2_p2() {
+        let graph = ArrayGraph::from_adjacency(vec![
+            vec![ 1 ],
+            vec![ 0 ],
+            vec![ 3 ],
+            vec![ 2 ]
+        ]).unwrap();
+
+        assert_eq!(greedy(&graph), vec![
+            (0, 1),
+            (2, 3)
         ]);
     }
 
     #[test]
     fn p3() {
-        let graph = IndexGraph::build(vec![
+        let graph = ArrayGraph::from_adjacency(vec![
             vec![ 1 ],
             vec![ 0, 2 ],
             vec![ 1 ]
         ]).unwrap();
-        let matching = greedy(&graph);
+        let result = greedy(&graph);
 
-        assert_eq!(matching.edges().collect::<HashSet<_>>(), set![
-            (&0, &1)
+        assert_eq!(result, vec![
+            (0, 1)
         ]);
     }
 
     #[test]
     fn p4() {
-        let graph = IndexGraph::build(vec![
+        let graph = ArrayGraph::from_adjacency(vec![
             vec![ 1 ],
             vec![ 0, 2 ],
             vec![ 1, 3 ],
             vec![ 2 ]
         ]).unwrap();
-        let matching = greedy(&graph);
+        let result = greedy(&graph);
 
-        assert_eq!(matching.edges().collect::<HashSet<_>>(), set![
-            (&0, &1),
-            (&2, &3)
+        assert_eq!(result, vec![
+            (0, 1),
+            (2, 3)
         ]);
     }
 
     #[test]
     fn s3() {
-        let graph = IndexGraph::build(vec![
+        let graph = ArrayGraph::from_adjacency(vec![
             vec![ 1 ],
             vec![ 0, 2, 3 ],
             vec![ 1 ],
             vec![ 1 ]
         ]).unwrap();
-        let matching = greedy(&graph);
 
-        assert_eq!(matching.edges().collect::<HashSet<_>>(), set![
-            (&0, &1)
+        assert_eq!(greedy(&graph), vec![
+            (0, 1)
         ]);
     }
 
     #[test]
     fn c6() {
-        let graph = IndexGraph::build(vec![
+        let graph = ArrayGraph::from_adjacency(vec![
             vec![ 1, 5 ],
             vec![ 0, 2 ],
             vec![ 1, 3 ],
@@ -171,12 +159,11 @@ mod tests {
             vec![ 3, 5 ],
             vec![ 4, 0 ]
         ]).unwrap();
-        let matching = greedy(&graph);
 
-        assert_eq!(matching.edges().collect::<HashSet<_>>(), set![
-            (&0, &1),
-            (&2, &3),
-            (&4, &5)
+        assert_eq!(greedy(&graph), vec![
+            (0, 1),
+            (2, 3),
+            (4, 5)
         ]);
     }
 }
