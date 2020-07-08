@@ -10,7 +10,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tinygraph = [ git = "https://github.com/rapodaca/tinygraph" ]
+tinygraph = 0.6.0
 ```
 
 ## Examples
