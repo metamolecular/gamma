@@ -1,28 +1,34 @@
+use std::convert::TryFrom;
 use std::collections::HashSet;
 
-use crate::graph::{ Graph, HashGraph };
-use crate::traversal::depth_first;
+use crate::graph::{ Graph, DefaultGraph };
+use crate::traversal::{ DepthFirst };
 
 /// Returns the [connected components](https://en.wikipedia.org/wiki/Component_(graph_theory))
 /// of a Graph as an Adjacency.
 /// 
 /// ```rust
-/// use gamma::graph::{ Graph, Error, ArrayGraph, HashGraph, Step };
+/// use std::convert::TryFrom;
+/// 
+/// use gamma::graph::{ Graph, Error, DefaultGraph };
 /// use gamma::selection::components;
 /// 
 /// fn main() -> Result<(), Error> {
-///     let graph = ArrayGraph::from_adjacency(vec![
+///     let graph = DefaultGraph::try_from(vec![
 ///         vec![ 1 ],
 ///         vec![ 0 ],
 ///         vec![ ]
 ///     ])?;
+///     let mut c1 = DefaultGraph::new();
+///     let mut c2 = DefaultGraph::new();
 /// 
-///     assert_eq!(components(&graph).collect::<Vec<_>>(), vec![
-///         HashGraph::from_traversal(0, vec![
-///             Step::new(0, 1, false)
-///         ])?,
-///         HashGraph::from_traversal(2, vec![ ])?
-///     ]);
+///     c1.add_node(0)?;
+///     c1.add_node(1)?;
+///     c1.add_edge(0, 1)?;
+/// 
+///     c2.add_node(2)?;
+/// 
+///     assert_eq!(components(&graph).collect::<Vec<_>>(), vec![ c1, c2 ]);
 /// 
 ///     Ok(())
 /// }
@@ -44,7 +50,7 @@ pub struct Components<'a, G: Graph> {
 }
 
 impl<'a, G: Graph> Iterator for Components<'a, G> {
-    type Item = HashGraph;
+    type Item = DefaultGraph;
 
     fn next(&mut self) -> Option<Self::Item> {
         let root = loop {
@@ -60,93 +66,89 @@ impl<'a, G: Graph> Iterator for Components<'a, G> {
 
         self.visited.insert(*root);
 
-        let mut steps = Vec::new();
-        let traversal = depth_first(self.graph, *root).expect(
-            "unexpected error traversing graph"
+        let traversal = DepthFirst::new(self.graph, *root).expect(
+            "root not found"
+        );
+        let mut component = DefaultGraph::try_from(traversal).expect(
+            "traversal error"
         );
 
-        for step in traversal {
-            if !step.cut {
-                self.visited.insert(step.tid);
+        if component.is_empty() {
+            component.add_node(*root).expect("add root to empty graph");
+        } else {
+            for id in component.nodes() {
+                self.visited.insert(*id);
             }
-
-            steps.push(step);
         }
 
-        let result = HashGraph::from_traversal(*root, steps).expect(
-            "unexpected error building HashGraph"
-        );
-        
-        Some(result)
+        Some(component)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::{ ArrayGraph, Step };
 
     #[test]
     fn p1() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ ]
         ]).unwrap();
         let components = components(&graph).collect::<Vec<_>>();
 
-        assert_eq!(components, vec![
-            HashGraph::from_traversal(0, vec![ ]).unwrap()
-        ]);
+        assert_eq!(components, vec![ graph ])
     }
 
     #[test]
     fn p1_p1() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ ],
             vec![ ]
         ]).unwrap();
         let components = components(&graph).collect::<Vec<_>>();
+        let mut c1 = DefaultGraph::new();
+        let mut c2 = DefaultGraph::new();
 
-        assert_eq!(components, vec![
-            HashGraph::from_traversal(0, vec![ ]).unwrap(),
-            HashGraph::from_traversal(1, vec![ ]).unwrap()
-        ]);
+        assert_eq!(c1.add_node(0), Ok(()));
+        assert_eq!(c2.add_node(1), Ok(()));
+
+        assert_eq!(components, vec![ c1, c2 ])
     }
 
     #[test]
     fn p2() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0 ]
         ]).unwrap();
         let components = components(&graph).collect::<Vec<_>>();
         
-        assert_eq!(components, vec![
-            HashGraph::from_traversal(0, vec![
-                Step::new(0, 1, false)
-            ]).unwrap(),
-        ]);
+        assert_eq!(components, vec![ graph ])
     }
 
     #[test]
     fn p2_p1() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0 ],
             vec![ ],
         ]).unwrap();
         let components = components(&graph).collect::<Vec<_>>();
-        
-        assert_eq!(components, vec![
-            HashGraph::from_traversal(0, vec![
-                Step::new(0, 1, false)
-            ]).unwrap(),
-            HashGraph::from_traversal(2, vec![ ]).unwrap()
-        ]);
+        let mut c1 = DefaultGraph::new();
+        let mut c2 = DefaultGraph::new();
+
+        assert_eq!(c1.add_node(0), Ok(()));
+        assert_eq!(c1.add_node(1), Ok(()));
+        assert_eq!(c1.add_edge(0, 1), Ok(()));
+
+        assert_eq!(c2.add_node(2), Ok(()));
+
+        assert_eq!(components, vec![c1, c2 ])
     }
 
     #[test]
     fn p2_p2_p2() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0 ],
             vec![ 3 ],
@@ -155,23 +157,28 @@ mod tests {
             vec![ 4 ]
         ]).unwrap();
         let components = components(&graph).collect::<Vec<_>>();
-        
-        assert_eq!(components, vec![
-            HashGraph::from_traversal(0, vec![
-                Step::new(0, 1, false)
-            ]).unwrap(),
-            HashGraph::from_traversal(2, vec![
-                Step::new(2, 3, false)
-            ]).unwrap(),
-            HashGraph::from_traversal(4, vec![
-                Step::new(4, 5, false)
-            ]).unwrap()
-        ]);
+        let mut c1 = DefaultGraph::new();
+        let mut c2 = DefaultGraph::new();
+        let mut c3 = DefaultGraph::new();
+
+        assert_eq!(c1.add_node(0), Ok(()));
+        assert_eq!(c1.add_node(1), Ok(()));
+        assert_eq!(c1.add_edge(0, 1), Ok(()));
+
+        assert_eq!(c2.add_node(2), Ok(()));
+        assert_eq!(c2.add_node(3), Ok(()));
+        assert_eq!(c2.add_edge(2, 3), Ok(()));
+
+        assert_eq!(c3.add_node(4), Ok(()));
+        assert_eq!(c3.add_node(5), Ok(()));
+        assert_eq!(c3.add_edge(4, 5), Ok(()));
+
+        assert_eq!(components, vec![c1, c2, c3 ]);
     }
 
     #[test]
     fn c3_p2() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1, 2 ],
             vec![ 0, 2 ],
             vec![ 0, 1 ],
@@ -179,16 +186,20 @@ mod tests {
             vec![ 3 ]
         ]).unwrap();
         let components = components(&graph).collect::<Vec<_>>();
+        let mut c1 = DefaultGraph::new();
+        let mut c2 = DefaultGraph::new();
 
-        assert_eq!(components, vec![
-            HashGraph::from_traversal(0, vec![
-                Step::new(0, 1, false),
-                Step::new(1, 2, false),
-                Step::new(2, 0, true)
-            ]).unwrap(),
-            HashGraph::from_traversal(3, vec![
-                Step::new(3, 4, false)
-            ]).unwrap()
-        ]);
+        assert_eq!(c1.add_node(0), Ok(()));
+        assert_eq!(c1.add_node(1), Ok(()));
+        assert_eq!(c1.add_node(2), Ok(()));
+        assert_eq!(c1.add_edge(0, 1), Ok(()));
+        assert_eq!(c1.add_edge(1, 2), Ok(()));
+        assert_eq!(c1.add_edge(2, 0), Ok(()));
+
+        assert_eq!(c2.add_node(3), Ok(()));
+        assert_eq!(c2.add_node(4), Ok(()));
+        assert_eq!(c2.add_edge(3, 4), Ok(()));
+
+        assert_eq!(components, vec![ c1, c2 ])
     }
 }

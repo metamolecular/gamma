@@ -1,21 +1,24 @@
 use std::collections::HashSet;
 
-use crate::graph::{ Graph, Error, Step };
+use crate::graph::{ Graph, Error };
+use super::Step;
 
 /// Implements a depth-first traversal as a Step Iterator.
 /// 
 /// ```rust
-/// use gamma::graph::{ Graph, Error, ArrayGraph, Step };
-/// use gamma::traversal::depth_first;
+/// use std::convert::TryFrom;
+/// 
+/// use gamma::graph::{ Graph, Error, DefaultGraph };
+/// use gamma::traversal::{ DepthFirst, Step };
 /// 
 /// fn main() -> Result<(), Error> {
-///     let graph = ArrayGraph::from_adjacency(vec![
+///     let graph = DefaultGraph::try_from(vec![
 ///         vec![ 1, 3 ],
 ///         vec![ 0, 2 ],
 ///         vec![ 1, 3 ],
 ///         vec![ 2, 0 ]
 ///     ])?;
-///     let traversal = depth_first(&graph, 0)?;
+///     let traversal = DepthFirst::new(&graph, 0)?;
 /// 
 ///     assert_eq!(traversal.collect::<Vec<_>>(), vec![
 ///         Step::new(0, 1, false),
@@ -27,29 +30,50 @@ use crate::graph::{ Graph, Error, Step };
 ///     Ok(())
 /// }
 /// ```
-pub fn depth_first<'a, G>(
-    graph: &'a G, root: usize
-) -> Result<DepthFirst<'a, G>, Error>
-where G: Graph {
-    let mut nodes = HashSet::new();
-    let mut stack = Vec::new();
 
-    for neighbor in graph.neighbors(root)? {
-        stack.push((root, *neighbor));
-    }
-
-    nodes.insert(root);
-    stack.reverse();
-
-    Ok(DepthFirst { nodes, stack, graph })
-}
 
 /// Iterates edges of graph in depth-first order. To perform a depth-first
 /// search, use the `depth_first` function instead.
+#[derive(Debug,PartialEq)]
 pub struct DepthFirst<'a, G> {
     nodes: HashSet<usize>,
     stack: Vec<(usize, usize)>,
     graph: &'a G
+}
+
+impl<'a, G: Graph> DepthFirst<'a, G> {
+    pub fn new(graph: &'a G, root: usize) -> Result<Self, Error> {
+        let mut nodes = HashSet::new();
+        let mut stack = Vec::new();
+    
+        for neighbor in graph.neighbors(root)? {
+            stack.push((root, *neighbor));
+        }
+    
+        nodes.insert(root);
+        stack.reverse();
+    
+        Ok(Self { nodes, stack, graph })
+    }
+
+    pub fn into_table(self) -> (Vec<usize>, Vec<(usize, usize)>) {
+        let mut nodes = Vec::new();
+        let mut edges = Vec::new();
+
+        for step in self {
+            if nodes.is_empty() {
+                nodes.push(step.sid);
+            }
+
+            if !step.cut {
+                nodes.push(step.tid)
+            }
+
+            edges.push((step.sid, step.tid));
+        }
+
+        (nodes, edges)
+    }
 }
 
 impl<'a, G> Iterator for DepthFirst<'a, G>
@@ -63,8 +87,6 @@ impl<'a, G> Iterator for DepthFirst<'a, G>
                 if self.nodes.contains(&node) {
                     Some(Step::new(parent, node, true))
                 } else {
-                    // let neighbors = self.graph.neighbors(node).unwrap()
-                        // .collect::<Vec<_>>();
                     let neighbors = self.graph.neighbors(node).unwrap().to_vec();
 
                     for neighbor in neighbors.into_iter().rev() {
@@ -91,34 +113,91 @@ impl<'a, G> Iterator for DepthFirst<'a, G>
 }
 
 #[cfg(test)]
+mod into_table {
+    use super::*;
+    use std::convert::TryFrom;
+    use crate::graph::DefaultGraph;
+
+    #[test]
+    fn p3() {
+        let graph = DefaultGraph::try_from(vec![
+            vec![ 1 ],
+            vec![ 0, 2 ],
+            vec![ 1 ]
+        ]).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
+
+        assert_eq!(traversal.into_table(), (vec![ 0, 1, 2 ], vec![
+            (0, 1),
+            (1, 2)
+        ]))
+    }
+
+    #[test]
+    fn c3() {
+        let graph = DefaultGraph::try_from(vec![
+            vec![ 1, 2 ],
+            vec![ 0, 2 ],
+            vec![ 1, 0 ]
+        ]).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
+
+        assert_eq!(traversal.into_table(), (vec![ 0, 1, 2 ], vec![
+            (0, 1),
+            (1, 2),
+            (2, 0)
+        ]))
+    }
+
+    #[test]
+    fn s3() {
+        let graph = DefaultGraph::try_from(vec![
+            vec![ 1 ],
+            vec![ 0, 2, 3 ],
+            vec![ 1 ],
+            vec![ 1 ]
+        ]).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
+
+        assert_eq!(traversal.into_table(), (vec![ 0, 1, 2, 3 ], vec![
+            (0, 1),
+            (1, 2),
+            (1, 3)
+        ]));
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::ArrayGraph;
+    use std::convert::TryFrom;
+    use crate::graph::DefaultGraph;
 
     #[test]
     fn unknown_root() {
-        let graph = ArrayGraph::new();
+        let graph = DefaultGraph::new();
+        let traversal = DepthFirst::new(&graph, 1);
 
-        assert_eq!(depth_first(&graph, 1).err().unwrap(), Error::MissingNode(1));
+        assert_eq!(traversal, Err(Error::MissingNode(1)));
     }
 
     #[test]
     fn p1() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![ ]);
     }
 
     #[test]
     fn p2() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false)
@@ -127,12 +206,12 @@ mod tests {
 
     #[test]
     fn p3() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0, 2 ],
             vec![ 1 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
@@ -142,12 +221,12 @@ mod tests {
 
     #[test]
     fn p3_inside() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0, 2 ],
             vec![ 1 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 1).unwrap();
+        let traversal = DepthFirst::new(&graph, 1).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(1, 0, false),
@@ -157,13 +236,13 @@ mod tests {
 
     #[test]
     fn p4() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0, 2 ],
             vec![ 1, 3 ],
             vec![ 2 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
@@ -174,12 +253,12 @@ mod tests {
 
     #[test]
     fn c3() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1, 2 ],
             vec![ 0, 2 ],
             vec![ 1, 0 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
@@ -190,13 +269,13 @@ mod tests {
 
     #[test]
     fn s3() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0, 2, 3 ],
             vec![ 1 ],
             vec![ 1 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
@@ -207,13 +286,13 @@ mod tests {
 
     #[test]
     fn s3_inside() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0, 2, 3 ],
             vec![ 1 ],
             vec![ 1 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 1).unwrap();
+        let traversal = DepthFirst::new(&graph, 1).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(1, 0, false),
@@ -224,13 +303,13 @@ mod tests {
 
     #[test]
     fn flower_from_stalk() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0, 2, 3 ],
             vec![ 1, 3 ],
             vec![ 2, 1 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
@@ -242,13 +321,13 @@ mod tests {
 
     #[test]
     fn flower_with_cut_in_branch() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1, 2 ],
             vec![ 0, 2 ],
             vec![ 1, 0, 3 ],
             vec![ 2 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
@@ -260,14 +339,14 @@ mod tests {
 
     #[test]
     fn blocked_branched_path() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1 ],
             vec![ 0, 2, 3, 4 ],
             vec![ 1 ],
             vec![ 1, 4 ],
             vec![ 3, 1 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
@@ -280,7 +359,7 @@ mod tests {
 
     #[test]
     fn bicyclo_220_with_cut_on_second_branching() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1, 5 ],
             vec![ 0, 2 ],
             vec![ 1, 5, 3 ],
@@ -288,7 +367,7 @@ mod tests {
             vec![ 3, 5 ],
             vec![ 2, 4, 0 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
 
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
@@ -303,15 +382,15 @@ mod tests {
 
     #[test]
     fn bicyclo_210() {
-        let graph = ArrayGraph::from_adjacency(vec![
+        let graph = DefaultGraph::try_from(vec![
             vec![ 1, 2, 4 ],
             vec![ 0, 2 ],
             vec![ 1, 0, 3 ],
             vec![ 2, 4 ],
             vec![ 3, 0 ]
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
-
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
+        
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
             Step::new(1, 2, false),
@@ -324,18 +403,18 @@ mod tests {
 
     #[test]
     fn cube() {
-        let graph = ArrayGraph::from_adjacency(vec![
-            vec![ 1, 3, 4 ],
-            vec![ 0, 2, 5 ],
-            vec![ 1, 3, 6 ],
-            vec![ 2, 0, 7 ],
-            vec![ 5, 7, 0 ],
-            vec![ 4, 6, 1 ],
-            vec![ 5, 7, 2 ],
-            vec![ 6, 4, 3 ]
+        let graph = DefaultGraph::try_from(vec![
+            vec![ 1, 3, 4 ], // 0
+            vec![ 0, 2, 5 ], // 1
+            vec![ 1, 3, 6 ], // 2
+            vec![ 2, 0, 7 ], // 3
+            vec![ 5, 7, 0 ], // 4
+            vec![ 4, 6, 1 ], // 5
+            vec![ 5, 7, 2 ], // 6
+            vec![ 6, 4, 3 ]  // 7
         ]).unwrap();
-        let traversal = depth_first(&graph, 0).unwrap();
-
+        let traversal = DepthFirst::new(&graph, 0).unwrap();
+        
         assert_eq!(traversal.collect::<Vec<_>>(), vec![
             Step::new(0, 1, false),
             Step::new(1, 2, false),

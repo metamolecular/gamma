@@ -19,10 +19,11 @@ gamma = 0.6
 edge iteration order are stable and determined by the `from_adjacency` function.
 
 ```rust
-use gamma::graph::{ Graph, ArrayGraph, Error };
+use std::convert::TryFrom;
+use gamma::graph::{ Graph, DefaultGraph, Error };
 
 fn main() -> Result<(), Error> {
-    let p3 = ArrayGraph::from_adjacency(vec![
+    let p3 = DefaultGraph::try_from(vec![
         vec![ 1 ],
         vec![ 0, 2 ],
         vec![ 1 ]
@@ -41,12 +42,11 @@ fn main() -> Result<(), Error> {
     ]);
     assert_eq!(p3.has_edge(1, 2)?, true);
 
-    let result = ArrayGraph::from_adjacency(vec![
+    let result = DefaultGraph::try_from(vec![
         vec![ 1 ]
     ]);
 
     assert_eq!(result, Err(Error::MissingNode(1)));
-    assert!(false);
 
     Ok(())
 }
@@ -56,7 +56,6 @@ Features include:
 
 - depth-first and breadth-first traversal
 - connected components
-- greedy matching
 
 ## Versions
 
