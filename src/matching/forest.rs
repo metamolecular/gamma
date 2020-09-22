@@ -87,6 +87,61 @@ impl Forest {
 
         Ok(path[0])
     }
+
+    pub fn blossom<'a>(
+        &self, v: usize, w: usize
+    ) -> Result<Vec<usize>, Error> {
+        let left = self.path(v)?;
+        let mut right = self.path(w)?;
+
+        if left.len() != right.len() {
+            return Err(Error::MissingBlossom(v, w))
+        }
+
+        for i in 0..left.len() {
+            if left[i] != right[i] {
+                if i > 0 {
+                    let mut result = left[i..].to_vec();
+
+                    result.reverse();
+                    result.push(left[i - 1]);
+                    result.append(&mut right[i..].to_vec());
+
+                    return Ok(result)
+                } else {
+                    return Err(Error::MissingBlossom(v, w))
+                }
+            }
+        };
+
+        panic!("invalid state")
+    }
+
+    pub fn path_from2<'a>(
+        &self, v: usize, w: usize
+    ) -> Result<Vec<usize>, Error> {
+        let left = self.path(v)?;
+        let mut right = self.path(w)?;
+    
+        for i in 0..left.len().max(right.len()) {
+            if i == left.len() {
+                return Ok(right[(i - 1)..].to_vec());
+            } else if i == right.len() {
+                return Ok(left[(i - 1)..].to_vec());
+            } else if left[i] != right[i] {
+                let mut result = left[(i - 1)..].to_vec();
+    
+                right = right[(i..)].to_vec();
+    
+                right.reverse();
+                result.append(&mut right);
+    
+                return Ok(result);
+            }
+        }
+    
+        panic!("invalid state");
+    }
 }
 
 #[cfg(test)]
@@ -350,5 +405,87 @@ mod root {
         assert_eq!(forest.add_edge(1, 2), Ok(()));
 
         assert_eq!(forest.root(2), Ok(0))
+    }
+}
+
+#[cfg(test)]
+mod blossom {
+    use super::*;
+
+    #[test]
+    fn unconnected() {
+        let mut forest = Forest::new();
+
+        assert_eq!(forest.add_root(0), Ok(()));
+        assert_eq!(forest.add_root(1), Ok(()));
+        assert_eq!(forest.add_edge(0, 2), Ok(()));
+        assert_eq!(forest.add_edge(1, 3), Ok(()));
+
+        assert_eq!(forest.blossom(2, 3), Err(Error::MissingBlossom(2, 3)))
+    }
+
+    #[test]
+    fn different_lengths() {
+        let mut forest = Forest::new();
+
+        assert_eq!(forest.add_root(0), Ok(()));
+        assert_eq!(forest.add_edge(0, 1), Ok(()));
+        assert_eq!(forest.add_edge(1, 2), Ok(()));
+        assert_eq!(forest.add_edge(0, 3), Ok(()));
+        assert_eq!(forest.add_edge(3, 4), Ok(()));
+        assert_eq!(forest.add_edge(4, 5), Ok(()));
+
+        assert_eq!(forest.blossom(5, 2), Err(Error::MissingBlossom(5, 2)))
+    }
+
+    #[test]
+    fn inline() {
+        let mut forest = Forest::new();
+
+        assert_eq!(forest.add_root(0), Ok(()));
+        assert_eq!(forest.add_edge(0, 1), Ok(()));
+        assert_eq!(forest.add_edge(1, 2), Ok(()));
+        assert_eq!(forest.add_edge(2, 3), Ok(()));
+
+        assert_eq!(forest.blossom(3, 2), Err(Error::MissingBlossom(3, 2)))
+    }
+
+    #[test]
+    fn c3_from_root() {
+        let mut forest = Forest::new();
+
+        assert_eq!(forest.add_root(0), Ok(()));
+        assert_eq!(forest.add_edge(0, 1), Ok(()));
+        assert_eq!(forest.add_edge(0, 2), Ok(()));
+
+        assert_eq!(forest.blossom(1, 2), Ok(vec![ 1, 0, 2 ]))
+    }
+
+    #[test]
+    fn c5_from_root() {
+        let mut forest = Forest::new();
+
+        assert_eq!(forest.add_root(0), Ok(()));
+        assert_eq!(forest.add_edge(0, 1), Ok(()));
+        assert_eq!(forest.add_edge(1, 2), Ok(()));
+        assert_eq!(forest.add_edge(0, 3), Ok(()));
+        assert_eq!(forest.add_edge(3, 4), Ok(()));
+
+        assert_eq!(forest.blossom(2, 4), Ok(vec![ 2, 1, 0, 3, 4 ]))
+    }
+
+    #[test]
+    fn c5_from_inside() {
+        let mut forest = Forest::new();
+
+        assert_eq!(forest.add_root(0), Ok(()));
+        assert_eq!(forest.add_edge(0, 1), Ok(()));
+        assert_eq!(forest.add_edge(1, 2), Ok(()));
+        assert_eq!(forest.add_edge(2, 3), Ok(()));
+        assert_eq!(forest.add_edge(3, 4), Ok(()));
+        assert_eq!(forest.add_edge(2, 5), Ok(()));
+        assert_eq!(forest.add_edge(5, 6), Ok(()));
+
+        assert_eq!(forest.blossom(4, 6), Ok(vec![ 4, 3, 2, 5, 6 ]))
     }
 }

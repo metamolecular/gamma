@@ -188,6 +188,28 @@ impl<'a, G: Graph> TryFrom<DepthFirst<'a, G>> for DefaultGraph {
     }
 }
 
+impl TryFrom<Vec<(usize, usize)>> for DefaultGraph {
+    type Error = Error;
+
+    fn try_from(edges: Vec<(usize, usize)>) -> Result<Self, Self::Error> {
+        let mut result = DefaultGraph::new();
+
+        for (sid, tid) in edges {
+            if !result.has_node(sid) {
+                result.add_node(sid)?;
+            }
+
+            if !result.has_node(tid) {
+                result.add_node(tid)?;
+            }
+
+            result.add_edge(sid, tid)?;
+        }
+
+        Ok(result)
+    }
+}
+
 #[cfg(test)]
 mod try_from_adjacency {
     use super::*;
@@ -219,6 +241,52 @@ mod try_from_adjacency {
         ]);
 
         assert_eq!(graph, Err(Error::MissingEdge(1, 0)))
+    }
+}
+
+#[cfg(test)]
+mod try_from_edges {
+    use super::*;
+
+    #[test]
+    fn duplicate_edge() {
+        let graph = DefaultGraph::try_from(vec![
+            (0, 1),
+            (0, 1)
+        ]);
+
+        assert_eq!(graph, Err(Error::DuplicateEdge(0, 1)))
+    }
+
+    #[test]
+    fn duplicate_edge_reverse() {
+        let graph = DefaultGraph::try_from(vec![
+            (0, 1),
+            (1, 0)
+        ]);
+
+        assert_eq!(graph, Err(Error::DuplicateEdge(1, 0)))
+    }
+
+    #[test]
+    fn valid() {
+        let graph = DefaultGraph::try_from(vec![
+            (0, 1),
+            (1, 2),
+            (3, 4)
+        ]).unwrap();
+        let mut expected = DefaultGraph::new();
+
+        assert_eq!(expected.add_node(0), Ok(()));
+        assert_eq!(expected.add_node(1), Ok(()));
+        assert_eq!(expected.add_node(2), Ok(()));
+        assert_eq!(expected.add_node(3), Ok(()));
+        assert_eq!(expected.add_node(4), Ok(()));
+        assert_eq!(expected.add_edge(0, 1), Ok(()));
+        assert_eq!(expected.add_edge(1, 2), Ok(()));
+        assert_eq!(expected.add_edge(3, 4), Ok(()));
+
+        assert_eq!(graph, expected);
     }
 }
 
