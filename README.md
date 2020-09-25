@@ -56,6 +56,7 @@ Features include:
 
 - depth-first and breadth-first traversal
 - connected components
+- maximum matching using Edmonds' Blossom algorithm
 
 ## Versions
 
