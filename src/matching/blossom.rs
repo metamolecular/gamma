@@ -2,13 +2,11 @@ use crate::graph::{ Graph, DefaultGraph, Error };
 use super::pairing::Pairing;
 
 #[derive(Debug,PartialEq)]
-#[allow(dead_code)]
 pub struct Blossom {
     id: usize,
     path: Vec<usize>
 }
 
-#[allow(dead_code)]
 impl Blossom {
     pub fn new(
         id: usize, mut left: Vec<usize>, mut right: Vec<usize>
