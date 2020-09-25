@@ -1,183 +1,128 @@
-use crate::graph::{ Graph, DefaultGraph };
-use super::error::Error;
+use crate::graph::{ Graph };
 use super::pairing::Pairing;
 use super::forest::Forest;
 use super::marker::Marker;
+use super::blossom::Blossom;
 
 pub fn maximum_matching<'a, G: Graph>(
     graph: &'a G, pairing: &'a mut Pairing
-) -> Result<(), Error> { // A1
-    let path = find_augmenting_path(graph, pairing)?; // A2
-
-    if path.len() > 0 { // A3
-        pairing.augment(&path)?;
-        maximum_matching(graph, pairing) // A4
-    } else { // A5
-        Ok(()) // A6
+) {
+    while let Some(path) = augmenting_path(graph, pairing) {
+        pairing.augment(path);
+        maximum_matching(graph, pairing);
     }
 }
 
-fn find_augmenting_path<'a, G: Graph>(
+fn augmenting_path<'a, G: Graph>(
     graph: &'a G, pairing: &'a mut Pairing
-) -> Result<Vec<usize>, Error> { // B01
-    let mut forest = Forest::new(); // B02
+) -> Option<Vec<usize>> {
+    let mut forest = Forest::new();
     let mut marker = Marker::new();
 
-    for (sid, tid) in pairing.edges() { // B03
-        // B04 missing
-        marker.add_edge(sid, tid);  // B05
-    } // B06
+    for (sid, tid) in pairing.edges() {
+        marker.mark_edge(sid, tid);
+    }
 
     for v in graph.nodes() {
-        if !pairing.has_node(*v) { // B05
-            forest.add_root(*v)?; // B06
-        } // B07
+        if !pairing.has_node(*v) {
+            forest.add_root(*v);
+        }
     }
 
     loop {
-        let v = match node_candidate(graph, &marker, &forest)? {
-            Some(v) => v,
+        let v = match some_v(&forest, &marker) {
+            Some(node) => node,
             None => break
-        }; // B08
+        };
 
-        // while there exists an umarked edge e = { v, w } do
         loop {
-            let w = match edge_candidate(v, graph, &marker) {
-                Some(w) => w,
+            let w = match some_w(v, graph, &marker) {
+                Some(node) => node,
                 None => break
-            }; // B09
-
-            if !forest.has_node(w) { // B10
-                let x = pairing.mate(w)?; // B11
-
-                forest.add_edge(v, w)?; // B12
-                forest.add_edge(w, x)?;
-            } else { // B13
-                if forest.odd(w)? { // B14
-                    // do nothing
-                } else { // B15
-                    if forest.root(v) != forest.root(w) { // B16
-                        let mut p1 = forest.path(v)?;
-                        let mut p2 = forest.path(w)?;
-
-                        p2.reverse();
-                        p1.append(&mut p2); // B17
-
-                        return Ok(p1); // B18
-                    } else { // B19
-                        // constract a blossom in G and look for the path in the
-                        // contracted graph
-                        let blossom = create_blossom(v, w, &forest)?;
-                        println!("blossom path {:?}", blossom);
-                        println!("matching {:?}", pairing.edges().collect::<Vec<_>>());
-                        // let contracted_graph = contract_graph(&blossom, graph)?;
-                        unimplemented!()
+            };
+            
+            match forest.path(w) {
+                Some(path_w) => {
+                    if path_w.len() % 2 == 1 {
+                        return even_path(v, path_w, graph, &forest, pairing)
                     }
+                },
+                None => {
+                    forest.add_edge(v, w);
+                    forest.add_edge(w, pairing.mate(w));
                 }
             }
 
-            marker.add_edge(v, w); // B28
-        } // B29
-
-        marker.add_node(v); // B30
-    } // B31
-
-    Ok(vec![ ]) // B32
-} // B33
-
-// while there is an unmarked vertex v in F with distance( v, root( v ) )
-// even do
-fn node_candidate<'a, G: Graph>(
-    graph: &'a G, marker: &'a Marker, forest: &'a Forest
-) -> Result<Option<usize>, Error> {
-    for &v in graph.nodes() {
-        if !marker.has_node(v) && forest.has_node(v) && forest.even(v)? {
-            return Ok(Some(v));
+            marker.mark_edge(v, w);
         }
-    }
 
-    Ok(None)
-}
-
-fn edge_candidate<'a, G: Graph>(
-    v: usize, graph: &'a G, marker: &Marker
-) -> Option<usize> {
-    for &w in graph.neighbors(v).unwrap() {
-        if !marker.has_edge(v, w) {
-            return Some(w);
-        }
+        marker.mark_node(v);
     }
 
     None
 }
 
-fn create_blossom<'a>(
-    v: usize, w: usize, forest: &'a Forest
-) -> Result<Vec<usize>, Error> {
-    let left = forest.path(v)?;
-    let mut right = forest.path(w)?;
-
-    for i in 0..left.len().max(right.len()) {
-        if i == left.len() {
-            return Ok(right[(i - 1)..].to_vec());
-        } else if i == right.len() {
-            return Ok(left[(i - 1)..].to_vec());
-        } else if left[i] != right[i] {
-            let mut result = left[(i - 1)..].to_vec();
-
-            right = right[(i..)].to_vec();
-
-            right.reverse();
-            result.append(&mut right);
-
-            return Ok(result);
-        }
-    }
-
-    panic!("invalid state");
+fn some_v(forest: &Forest, marker: &Marker) -> Option<usize> {
+    forest.even_nodes().find(|id| !marker.has_node(*id))
 }
 
-fn contract_graph<'a, G: Graph>(
-    blossom: &'a Vec<usize>, graph: &'a G
-) -> Result<DefaultGraph, Error> {
-    // need an id in result graph for blossom
-    // return that id
-    let mut result = DefaultGraph::new();
+fn some_w<G: Graph>(v: usize, graph: &G, marker: &Marker) -> Option<usize> {
+    graph.neighbors(v)
+        .expect("neighbors of v").iter().cloned()
+        .find(|&id| !marker.has_edge(v, id))
+}
 
-    for node in graph.nodes() {
-        if !blossom.contains(node) {
-            result.add_node(*node).unwrap();
-        }
+fn even_path<G: Graph>(
+    v: usize,
+    mut path_w: Vec<usize>,
+    graph: &G,
+    forest: &Forest,
+    pairing: &Pairing
+) -> Option<Vec<usize>> {
+    let mut path_v = forest.path(v).expect("v not in forest");
+
+    if path_v.last() == path_w.last() {
+        process_blossom(path_v, path_w, graph, pairing)
+    } else {
+        path_v.reverse();
+        path_v.append(&mut path_w);
+
+        Some(path_v)
     }
+}
 
-    for (sid, tid) in graph.edges() {
-        if blossom.contains(sid) {
-            if !blossom.contains(tid) {
-                // result.add_edge(blossom, target;)
-            }
-        } else if blossom.contains(tid) {
+fn process_blossom<G:Graph>(
+    left: Vec<usize>, right: Vec<usize>, graph: &G, pairing: &Pairing
+) -> Option<Vec<usize>> {
+    let max_id = graph.nodes().iter().max().expect("no max id");
+    let blossom =  Blossom::new(max_id + 1, left, right);
+    let contracted_graph = blossom.contract_graph(graph).expect("bad graph");
+    let mut contracted_pairing = blossom.contract_pairing(&pairing);
 
-        } else {
-            result.add_edge(*sid, *tid).unwrap();
-        }
+    match augmenting_path(&contracted_graph, &mut contracted_pairing) {
+        Some(path) => Some(blossom.lift(path, graph)),
+        None => None
     }
-
-    Ok(result)
 }
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
     use super::*;
+    use std::collections::HashMap;
+    use std::convert::TryFrom;
+    use crate::graph::DefaultGraph;
 
     #[test]
     fn empty() {
         let graph = DefaultGraph::new();
         let mut pairing = Pairing::new();
         
-        assert_eq!(maximum_matching(&graph, &mut pairing), Ok(()));
+        maximum_matching(&graph, &mut pairing);
 
-        assert_eq!(pairing, Pairing::try_from(vec![ ]).unwrap())
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            HashMap::new()
+        )
     }
 
     #[test]
@@ -188,9 +133,12 @@ mod tests {
         ]).unwrap();
         let mut pairing = Pairing::new();
 
-        assert_eq!(maximum_matching(&graph, &mut pairing), Ok(()));
+        maximum_matching(&graph, &mut pairing);
 
-        assert_eq!(pairing, Pairing::try_from(vec![ (0, 1) ]).unwrap())
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [ (0, 1) ].iter().cloned().collect::<HashMap<_,_>>()
+        )
     }
 
     #[test]
@@ -202,9 +150,12 @@ mod tests {
         ]).unwrap();
         let mut pairing = Pairing::new();
 
-        assert_eq!(maximum_matching(&graph, &mut pairing), Ok(()));
+        maximum_matching(&graph, &mut pairing);
 
-        assert_eq!(pairing, Pairing::try_from(vec![ (0, 1) ]).unwrap())
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [ (0, 1) ].iter().cloned().collect::<HashMap<_,_>>()
+        )
     }
 
     #[test]
@@ -217,30 +168,27 @@ mod tests {
         ]).unwrap();
         let mut pairing = Pairing::new();
 
-        assert_eq!(maximum_matching(&graph, &mut pairing), Ok(()));
+        maximum_matching(&graph, &mut pairing);
 
-        assert_eq!(pairing, Pairing::try_from(vec![
-            (0, 1), (2, 3)
-        ]).unwrap())
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [ (0, 1), (2, 3) ].iter().cloned().collect::<HashMap<_,_>>()
+        )
     }
 
-    #[test]#[ignore]
+    #[test]
     fn c5() {
         let graph = DefaultGraph::try_from(vec![
-            vec![ 1, 4 ],
-            vec![ 0, 2, 5 ],
-            vec![ 1, 3 ],
-            vec![ 2, 4 ],
-            vec![ 3, 0 ],
-            vec![ 1 ]
+            (0, 1), (1, 2), (2, 3), (3, 4), (4, 0)
         ]).unwrap();
         let mut pairing = Pairing::new();
 
-        assert_eq!(maximum_matching(&graph, &mut pairing), Ok(()));
+        maximum_matching(&graph, &mut pairing);
 
-        assert_eq!(pairing, Pairing::try_from(vec![
-            (0, 1), (2, 3)
-        ]).unwrap())
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [ (0, 1), (2, 3) ].iter().cloned().collect::<HashMap<_,_>>()
+        )
     }
 
     #[test]
@@ -255,36 +203,31 @@ mod tests {
         ]).unwrap();
         let mut pairing = Pairing::new();
 
-        assert_eq!(maximum_matching(&graph, &mut pairing), Ok(()));
+        maximum_matching(&graph, &mut pairing);
 
-        assert_eq!(pairing, Pairing::try_from(vec![
-            (0, 1), (2, 3), (4, 5)
-        ]).unwrap())
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [ (0, 1), (2, 3), (4, 5) ].iter().cloned().collect::<HashMap<_,_>>()
+        )
     }
 
     #[test]
     fn acenapthene() {
         let graph = DefaultGraph::try_from(vec![
-            vec![ 1, 10 ],
-            vec![ 2, 11, 0 ],
-            vec![ 3, 1 ],
-            vec![ 4, 2 ],
-            vec![ 5, 3 ],
-            vec![ 6, 11, 4 ],
-            vec![ 7, 5 ],
-            vec![ 8, 6 ],
-            vec![ 9, 7 ],
-            vec![ 10, 11, 8 ],
-            vec![ 0, 9 ],
-            vec![ 9, 5, 1 ]
+            (0, 1), (1, 2), (2, 3), (3, 4), (4, 5),
+            (5, 6), (6, 7), (7, 8), (8, 9), (9, 10),
+            (10, 0), (11, 5), (11, 1), (11, 9)
         ]).unwrap();
+
         let mut pairing = Pairing::new();
 
-        assert_eq!(maximum_matching(&graph, &mut pairing), Ok(()));
+        maximum_matching(&graph, &mut pairing);
 
-        assert_eq!(pairing, Pairing::try_from(vec![
-            (0, 10), (1, 11), (2, 3), (4, 5), (6, 7), (8, 9)
-        ]).unwrap())
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [ (0, 10), (1, 11), (2, 3), (4, 5), (6, 7), (8, 9) ]
+                .iter().cloned().collect::<HashMap<_,_>>()
+        )
     }
 
     #[test]
@@ -298,10 +241,143 @@ mod tests {
         ]).unwrap();
         let mut pairing = Pairing::new();
 
-        assert_eq!(maximum_matching(&graph, &mut pairing), Ok(()));
+        maximum_matching(&graph, &mut pairing);
 
-        assert_eq!(pairing, Pairing::try_from(vec![
-            (0, 1), (2, 3)
-        ]).unwrap())
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [ (0, 1), (2, 3) ].iter().cloned().collect::<HashMap<_,_>>()
+        )
+    }
+
+    #[test]
+    fn path_through_5_blossom() {
+        let graph = DefaultGraph::try_from(vec![
+            (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 1),
+            (4, 6), (6, 7)
+        ]).unwrap();
+        let mut pairing = Pairing::new();
+
+        pairing.pair(2, 3);
+        pairing.pair(1, 5);
+        pairing.pair(4, 6);
+
+        maximum_matching(&graph, &mut pairing);
+
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [ (0, 1), (2, 3), (4, 5), (6, 7) ].iter().cloned().collect::<HashMap<_,_>>()
+        )
+    }
+
+    // https://doi.org/10.2991/icieac-14.2014.14
+    #[test]
+    fn yu_zhonge() {
+        let graph = DefaultGraph::try_from(vec![
+            (1, 2), (2, 3),
+            (3, 13), (13, 14), (14, 4), (4, 5), (5, 6), (6, 7),
+            (7, 8), (8, 9), (9, 10), (10, 11), (11, 5),
+            (10, 18), (18, 17), (17, 16), (16, 15), (15, 14),
+            (18, 19), (19, 20), (20, 21), (21, 22), (22, 16),
+            (4, 3), (13, 12)
+        ]).unwrap();
+        let mut pairing = Pairing::new();
+
+        pairing.pair(1, 2);
+        pairing.pair(3, 13);
+        pairing.pair(4, 14);
+        pairing.pair(5, 6);
+        pairing.pair(7, 8);
+        pairing.pair(9, 10);
+        pairing.pair(15, 16);
+        pairing.pair(17, 18);
+        pairing.pair(19, 20);
+        pairing.pair(21, 22);
+
+        maximum_matching(&graph, &mut pairing);
+
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(), [
+                (1, 2), (3, 4), (6, 7), (8, 9),
+                (5, 11), (10, 18), (19, 20), (21, 22),
+                (16, 17), (14, 15), (12, 13)
+            ].iter().cloned().collect::<HashMap<_,_>>()
+        )
+    }
+
+    #[test]
+    fn coronene_6_5() {
+        let graph = DefaultGraph::try_from(vec![
+            (6, 7), (7, 8), (8, 9), (9, 10), (10, 11),
+            (11, 12), (12, 13), (13, 14), (14, 15), (15, 16),
+            (16, 17), (17, 6),
+            (6, 0), (8, 1), (10, 2), (12, 3), (14, 4), (16, 5),
+            (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 8)
+        ]).unwrap();
+        let mut pairing = Pairing::new();
+
+        maximum_matching(&graph, &mut pairing);
+
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(), [
+                (0, 1), (2, 3), (4, 5), (6, 7), (8, 9),
+                (10, 11), (12, 13), (14, 15), (16, 17)
+            ].iter().cloned().collect::<HashMap<_,_>>()
+        )
+    }
+
+    #[test]
+    fn coronene_3_5() {
+        let graph = DefaultGraph::try_from(vec![
+            (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10),
+            (10, 11), (11, 4),
+            (0, 4), (1, 6), (2, 8), (3, 10),
+            (0, 1), (1, 2), (2, 3), (3, 0)
+        ]).unwrap();
+        let mut pairing = Pairing::new();
+
+        maximum_matching(&graph, &mut pairing);
+
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(), [
+                (4, 5), (0, 1), (8, 9), (10, 11), (2, 3), (6, 7)
+            ].iter().cloned().collect::<HashMap<_,_>>()
+        )
+    }
+
+    #[test]
+    fn c60() {
+        let graph = DefaultGraph::try_from(vec![
+            (29, 30), (30, 43), (43, 44), (44, 55), (55, 29),
+            (29, 28), (31, 30), (43, 42), (44, 45), (55, 54),
+            (28, 57), (57, 56), (56, 31), (31, 32), (32, 33),
+            (33, 42), (42, 41), (41, 40), (40, 45), (45, 46),
+            (46, 47), (47, 54), (54, 26), (26, 27), (27, 28),
+            (57, 7),  (56, 4),  (32, 3),  (33, 34), (41, 36),
+            (40, 39), (46, 51), (47, 48), (26, 25), (27, 8),
+            (7, 6),   (6, 5),   (5, 4),   (4, 3),   (3, 2),
+            (2, 35),  (35, 34), (34, 36), (36, 37), (37, 38),
+            (38, 39), (39, 51), (51, 50), (50, 49), (49, 48),
+            (48, 25), (25, 24), (24, 9),  (9, 8),   (8, 7),
+            (6, 11),  (5, 0),   (2, 1),   (35, 16), (37, 17),
+            (38, 53), (50, 52), (49, 22), (24, 23), (9, 10),
+            (11, 12), (12, 0),  (0, 1),   (1, 15),  (15, 16),
+            (16, 17), (17, 18), (18, 53), (53, 52), (52, 21),
+            (21, 22), (22, 23), (23, 58), (58, 10), (10, 11),
+            (12, 13), (15, 14), (18, 19), (21, 20), (58, 59),
+            (13, 14), (14, 19), (19, 20), (20, 59), (59, 13)
+        ]).unwrap();
+        let mut pairing = Pairing::new();
+
+        maximum_matching(&graph, &mut pairing);
+
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(), [
+                (48, 49), (1, 2),   (17, 37), (6, 7),   (54, 55), (31, 56),
+                (19, 20), (28, 57), (26, 27), (22, 23), (29, 30), (4, 5),
+                (50, 51), (34, 35), (24, 25), (10, 11), (43, 44), (3, 32),
+                (46, 47), (13, 14), (33, 42), (58, 59), (15, 16), (8, 9),
+                (36, 41), (38, 39), (21, 52), (40, 45), (0, 12),  (18, 53)
+            ].iter().cloned().collect::<HashMap<_,_>>()
+        )
     }
 }

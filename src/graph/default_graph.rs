@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::cmp::PartialEq;
 
 use super::{ Graph, Error };
 use crate::traversal::DepthFirst;
@@ -26,7 +27,7 @@ use crate::traversal::DepthFirst;
 ///     Ok(())
 /// }
 /// ```
-#[derive(Debug,PartialEq)]
+#[derive(Debug)]
 pub struct DefaultGraph {
     indices: HashMap<usize, usize>,
     adjacency: Vec<Vec<usize>>,
@@ -61,11 +62,11 @@ impl DefaultGraph {
     pub fn add_edge(&mut self, sid: usize, tid: usize) -> Result<(), Error> {
         let &source_index = match self.indices.get(&sid) {
             Some(index) => index,
-            None => unimplemented!()
+            None => return Err(Error::MissingNode(sid))
         };
         let &target_index = match self.indices.get(&tid) {
             Some(index) => index,
-            None => unimplemented!()
+            None => return Err(Error::MissingNode(tid))
         };
         
         if self.adjacency[source_index].contains(&tid) {
@@ -207,6 +208,34 @@ impl TryFrom<Vec<(usize, usize)>> for DefaultGraph {
         }
 
         Ok(result)
+    }
+}
+
+impl PartialEq for DefaultGraph {
+    fn eq(&self, other: &Self) -> bool {
+        if self.size() != other.size() {
+            return false;
+        } else if self.order() != other.order() {
+            return false;
+        }
+
+        for &id in self.nodes() {
+            if !other.has_node(id) {
+                return false;
+            }
+        }
+
+        for (sid, tid) in self.edges() {
+            match other.has_edge(*sid, *tid) {
+                Ok(result) => {
+                    if !result {
+                        return false
+                    }
+                }, Err(_) => return false
+            }
+        }
+
+        true
     }
 }
 
@@ -357,6 +386,24 @@ mod add_edge {
         ]).unwrap();
 
         assert_eq!(graph.add_edge(1, 0), Err(Error::DuplicateEdge(1, 0)))
+    }
+
+    #[test]
+    fn missing_sid() {
+        let mut graph = DefaultGraph::try_from(vec![
+            vec![ ]
+        ]).unwrap();
+
+        assert_eq!(graph.add_edge(1, 0), Err(Error::MissingNode(1)))
+    }
+
+    #[test]
+    fn missing_tid() {
+        let mut graph = DefaultGraph::try_from(vec![
+            vec![ ]
+        ]).unwrap();
+
+        assert_eq!(graph.add_edge(0, 1), Err(Error::MissingNode(1)))
     }
 }
 
@@ -578,5 +625,65 @@ mod has_edge {
         ]).unwrap();
 
         assert_eq!(graph.has_edge(1, 0), Ok(true))
+    }
+}
+
+#[cfg(test)]
+mod eq {
+    use super::*;
+
+    #[test]
+    fn c3_and_p3() {
+        let c3 = DefaultGraph::try_from(vec![
+            vec![ 1, 2 ],
+            vec![ 0, 2 ],
+            vec![ 1, 0 ]
+        ]).unwrap();
+        let p3 = DefaultGraph::try_from(vec![
+            vec![ 1 ],
+            vec![ 0, 2 ],
+            vec![ 1 ]
+        ]).unwrap();
+
+        assert_eq!(c3 == p3, false)
+    }
+
+    #[test]
+    fn p2_and_p2_p1() {
+        let p2 = DefaultGraph::try_from(vec![
+            vec![ 1 ],
+            vec![ 0 ]
+        ]).unwrap();
+        let p2_p1 = DefaultGraph::try_from(vec![
+            vec![ 1 ],
+            vec![ 0 ],
+            vec![ ],
+        ]).unwrap();
+
+        assert_eq!(p2 == p2_p1, false)
+    }
+
+    #[test]
+    fn p2_and_p2_reverse() {
+        let g1 = DefaultGraph::try_from(vec![
+            (0, 1)
+        ]).unwrap();
+        let g2 = DefaultGraph::try_from(vec![
+            (1, 0)
+        ]).unwrap();
+
+        assert_eq!(g1 == g2, true)
+    }
+
+    #[test]
+    fn p2_and_p2_different_ids() {
+        let g1 = DefaultGraph::try_from(vec![
+            (0, 1)
+        ]).unwrap();
+        let g2 = DefaultGraph::try_from(vec![
+            (0, 2)
+        ]).unwrap();
+
+        assert_eq!(g1 == g2, false)
     }
 }
