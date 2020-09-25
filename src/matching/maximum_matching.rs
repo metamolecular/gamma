@@ -4,6 +4,36 @@ use super::forest::Forest;
 use super::marker::Marker;
 use super::blossom::Blossom;
 
+/// Performs a maximum matching over the Graph.
+/// 
+/// A greedy matching can be used as a starting point to maximum matching, so
+/// it may be helpful to try a greedy matching, falling back to maximum
+/// matching if the matching isn't perfect.
+/// 
+/// For more on matching, see: *[The Maximum Matching Problem](https://depth-first.com/articles/2019/04/02/the-maximum-matching-problem/)*.
+/// 
+/// ```rust
+/// use std::convert::TryFrom;
+/// use std::collections::BTreeSet;
+/// use gamma::graph::{ Error, DefaultGraph };
+/// use gamma::matching::{ maximum_matching, Pairing };
+/// 
+/// fn main() -> Result<(), Error> {
+///      let graph = DefaultGraph::try_from(vec![
+///          (0, 1), (1, 2), (2, 3)
+///      ]).unwrap();
+///      let mut pairing = Pairing::new();
+///
+///      maximum_matching(&graph, &mut pairing);
+///
+///      assert_eq!(
+///          pairing.edges().collect::<BTreeSet<_>>(),
+///            [ (0, 1), (2, 3) ].iter().cloned().collect::<BTreeSet<_>>()
+///      );
+///
+///     Ok(())
+/// }
+/// ```
 pub fn maximum_matching<'a, G: Graph>(
     graph: &'a G, pairing: &'a mut Pairing
 ) {
