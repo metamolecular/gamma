@@ -10,7 +10,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gamma = 0.6
+gamma = 0.8
 ```
 
 ## Examples
