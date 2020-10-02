@@ -141,8 +141,6 @@ mod tests {
     use std::collections::HashMap;
     use std::convert::TryFrom;
     use crate::graph::DefaultGraph;
-    use crate::matching::greedy;
-    use crate::traversal::DepthFirst;
 
     #[test]
     fn empty() {
