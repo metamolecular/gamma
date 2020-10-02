@@ -141,6 +141,8 @@ mod tests {
     use std::collections::HashMap;
     use std::convert::TryFrom;
     use crate::graph::DefaultGraph;
+    use crate::matching::greedy;
+    use crate::traversal::DepthFirst;
 
     #[test]
     fn empty() {
@@ -203,6 +205,23 @@ mod tests {
         assert_eq!(
             pairing.edges().collect::<HashMap<_,_>>(),
             [ (0, 1), (2, 3) ].iter().cloned().collect::<HashMap<_,_>>()
+        )
+    }
+
+    #[test]
+    fn p4_from_reversed_edges() {
+        let graph = DefaultGraph::try_from(vec![
+            (0, 1),
+            (0, 4),
+            (3, 4)
+        ]).unwrap();
+        let mut pairing = Pairing::new();
+
+        maximum_matching(&graph, &mut pairing);
+
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [ (0, 1), (3, 4) ].iter().cloned().collect::<HashMap<_,_>>()
         )
     }
 
@@ -295,7 +314,30 @@ mod tests {
 
         assert_eq!(
             pairing.edges().collect::<HashMap<_,_>>(),
-            [ (0, 1), (2, 3), (4, 5), (6, 7) ].iter().cloned().collect::<HashMap<_,_>>()
+            [
+                (0, 1), (2, 3), (4, 5), (6, 7)
+            ].iter().cloned().collect::<HashMap<_,_>>()
+        )
+    }
+
+    #[test]
+    fn c5_with_c3_stem_distant_unmatched() {
+        let graph = DefaultGraph::try_from(vec![
+            (0, 1), (1, 2), (2, 3), (3, 4), (4, 0), (4, 5), (5, 6), (6, 7)
+        ]).unwrap();
+        let mut pairing = Pairing::new();
+
+        pairing.pair(4, 0);
+        pairing.pair(6, 5);
+        pairing.pair(3, 2);
+
+        maximum_matching(&graph, &mut pairing);
+
+        assert_eq!(
+            pairing.edges().collect::<HashMap<_,_>>(),
+            [
+                (6, 7), (4, 5), (0, 1), (2, 3)
+            ].iter().cloned().collect::<HashMap<_,_>>()
         )
     }
 

@@ -13,6 +13,10 @@ impl Pairing {
         }
     }
 
+    pub fn order(&self) -> usize {
+        self.pairs.len()
+    }
+
     pub fn has_node(&self, id: usize) -> bool {
         self.pairs.contains_key(&id)
     }
@@ -26,23 +30,6 @@ impl Pairing {
         self.pairs.iter()
             .filter(|pair| pair.0 < pair.1)
             .map(|pair| (*pair.0, *pair.1))
-    }
-
-    fn insert(&mut self, sid: usize, tid: usize) {
-        match self.pairs.entry(sid) {
-            Occupied(mut entry) => {
-                if *entry.get() == tid {
-                    panic!("duplicate edge: ({},{})", sid, tid)
-                } else {
-                    let old = entry.insert(tid);
-
-                    self.pairs.remove(&old);
-                }
-            },
-            Vacant(entry) => {
-                entry.insert(tid);
-            }
-        }
     }
 
     pub fn augment(&mut self, path: Vec<usize>) {
@@ -63,28 +50,45 @@ impl Pairing {
             None => panic!("missing node: {}", id)
         }
     }
+
+    fn insert(&mut self, sid: usize, tid: usize) {
+        match self.pairs.entry(sid) {
+            Occupied(mut entry) => {
+                if *entry.get() == tid {
+                    // panic!("duplicate edge: ({},{})", sid, tid)
+                } else {
+                    let old = entry.insert(tid);
+
+                    self.pairs.remove(&old);
+                }
+            },
+            Vacant(entry) => {
+                entry.insert(tid);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
-mod pair {
+mod order {
     use super::*;
 
     #[test]
-    #[should_panic(expected="duplicate edge: (0,1)")]
-    fn duplicate() {
-        let mut pairing = Pairing::new();
+    fn default() {
+        let pairing = Pairing::new();
 
-        pairing.pair(0, 1);
-        pairing.pair(0, 1)
+        assert_eq!(pairing.order(), 0);
     }
 
     #[test]
-    #[should_panic(expected="duplicate edge: (1,0)")]
-    fn duplicate_reverse() {
+    fn three_pairs() {
         let mut pairing = Pairing::new();
 
         pairing.pair(0, 1);
-        pairing.pair(1, 0)
+        pairing.pair(2, 3);
+        pairing.pair(4, 5);
+
+        assert_eq!(pairing.order(), 6);
     }
 }
 
