@@ -1,6 +1,6 @@
 [package]
 name = "gamma"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["The Gamma Project Developers"]
 license = "MIT"
 edition = "2018"
