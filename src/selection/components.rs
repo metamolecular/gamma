@@ -38,7 +38,7 @@ pub fn components<'a, G: Graph>(
 ) -> Components<'a, G> {
     Components {
         visited: HashSet::new(),
-        iter: graph.nodes(),
+        iter: graph.ids(),
         graph: graph
     }
 }
@@ -77,7 +77,7 @@ impl<'a, G: Graph> Iterator for Components<'a, G> {
         if component.is_empty() {
             component.add_node(root).expect("add root to empty graph");
         } else {
-            for id in component.nodes() {
+            for id in component.ids() {
                 self.visited.insert(id);
             }
         }

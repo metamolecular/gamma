@@ -53,7 +53,7 @@ fn augmenting_path<'a, G: Graph>(
         marker.mark_edge(sid, tid);
     }
 
-    for v in graph.nodes() {
+    for v in graph.ids() {
         if !pairing.has_node(v) {
             forest.add_root(v);
         }
@@ -126,7 +126,7 @@ fn even_path<G: Graph>(
 fn process_blossom<G:Graph>(
     left: Vec<usize>, right: Vec<usize>, graph: &G, pairing: &Pairing
 ) -> Option<Vec<usize>> {
-    let max_id = graph.nodes().max().expect("no max id");
+    let max_id = graph.ids().max().expect("no max id");
     let blossom =  Blossom::new(max_id + 1, left, right);
     let contracted_graph = blossom.contract_graph(graph).expect("bad graph");
     let mut contracted_pairing = blossom.contract_pairing(&pairing);

@@ -179,7 +179,7 @@ mod tests {
         let graph = DefaultGraph::new();
         let traversal = DepthFirst::new(&graph, 1);
 
-        assert_eq!(traversal, Err(Error::MissingNode(1)));
+        assert_eq!(traversal, Err(Error::UnknownId(1)));
     }
 
     #[test]

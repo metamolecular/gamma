@@ -16,7 +16,7 @@ gamma = 0.9.0
 ## Examples
 
 `ArrayGraph` is a reference `Graph` implementation. Node, neighbor, and
-edge iteration order are stable and determined by the `try_from` function.
+edge iteration order are stable and set by the `try_from` function.
 
 ```rust
 use std::convert::TryFrom;
@@ -32,7 +32,7 @@ fn main() -> Result<(), Error> {
     assert_eq!(p3.is_empty(), false);
     assert_eq!(p3.order(), 3);
     assert_eq!(p3.size(), 2);
-    assert_eq!(p3.nodes().collect::<Vec<_>>(), [ 0, 1, 2 ]);
+    assert_eq!(p3.ids().collect::<Vec<_>>(), [ 0, 1, 2 ]);
     assert_eq!(p3.neighbors(1)?.collect::<Vec<_>>(), [ 0, 2 ]);
     assert_eq!(p3.has_node(4), false);
     assert_eq!(p3.degree(0)?, 1);
@@ -46,7 +46,7 @@ fn main() -> Result<(), Error> {
         vec![ 1 ]
     ]);
 
-    assert_eq!(result, Err(Error::MissingNode(1)));
+    assert_eq!(result, Err(Error::UnknownId(1)));
 
     Ok(())
 }
@@ -56,7 +56,7 @@ Features include:
 
 - depth-first and breadth-first traversal
 - connected components
-- maximum matching using Edmonds' Blossom algorithm
+- maximum matching using [Edmonds' Blossom algorithm](https://depth-first.com/articles/2020/09/28/edmonds-blossom-algorithm-part-1-cast-of-characters/)
 
 ## Versions
 
@@ -64,5 +64,5 @@ Gamma is not yet stable. Patch versions never introduce breaking changes, but mi
 
 ## License
 
-Tinygraph is distributed under the terms of the MIT License. See
+Gamma is distributed under the terms of the MIT License. See
 [LICENSE-MIT](LICENSE-MIT) and [COPYRIGHT](COPYRIGHT) for details.

@@ -38,7 +38,7 @@ impl Blossom {
 
         result.add_node(self.id)?;
     
-        for id in graph.nodes() {
+        for id in graph.ids() {
             if !self.path.contains(&id) {
                 result.add_node(id)?;
             }

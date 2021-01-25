@@ -6,8 +6,8 @@ use std::cmp::PartialEq;
 use super::{ Graph, Error };
 use crate::traversal::DepthFirst;
 
-/// A Graph backed by an adjacency matrix. Nodes and neighbors are iterated in
-/// the order in which they're added.
+/// An undirected Graph backed by an adjacency matrix. Nodes and neighbors are
+/// iterated in the order in which they're added.
 /// 
 /// ```rust
 /// use std::convert::TryFrom;
@@ -20,7 +20,7 @@ use crate::traversal::DepthFirst;
 ///         vec![ 1 ]
 ///     ])?;
 /// 
-///     assert_eq!(c3.nodes().collect::<Vec<_>>(), vec![ 0, 1, 2 ]);
+///     assert_eq!(c3.ids().collect::<Vec<_>>(), vec![ 0, 1, 2 ]);
 /// 
 ///     assert_eq!(c3.add_edge(0, 1), Err(Error::DuplicateEdge(0, 1)));
 /// 
@@ -31,7 +31,7 @@ use crate::traversal::DepthFirst;
 pub struct DefaultGraph {
     indices: HashMap<usize, usize>,
     adjacency: Vec<Vec<usize>>,
-    nodes: Vec<usize>,
+    ids: Vec<usize>,
     edges: Vec<(usize, usize)>
 }
 
@@ -40,20 +40,20 @@ impl DefaultGraph {
         Self {
             indices: HashMap::new(),
             adjacency: Vec::new(),
-            nodes: Vec::new(),
+            ids: Vec::new(),
             edges: Vec::new()
         }
     }
 
     pub fn add_node(&mut self, id: usize) -> Result<(), Error> {
         match self.indices.entry(id) {
-            Entry::Occupied(_) => return Err(Error::DuplicateNode(id)),
+            Entry::Occupied(_) => return Err(Error::DuplicateId(id)),
             Entry::Vacant(entry) => {
-                entry.insert(self.nodes.len());
+                entry.insert(self.ids.len());
             }
         }
 
-        self.nodes.push(id);
+        self.ids.push(id);
         self.adjacency.push(vec![ ]);
 
         Ok(())
@@ -62,11 +62,11 @@ impl DefaultGraph {
     pub fn add_edge(&mut self, sid: usize, tid: usize) -> Result<(), Error> {
         let &source_index = match self.indices.get(&sid) {
             Some(index) => index,
-            None => return Err(Error::MissingNode(sid))
+            None => return Err(Error::UnknownId(sid))
         };
         let &target_index = match self.indices.get(&tid) {
             Some(index) => index,
-            None => return Err(Error::MissingNode(tid))
+            None => return Err(Error::UnknownId(tid))
         };
         
         if self.adjacency[source_index].contains(&tid) {
@@ -83,26 +83,26 @@ impl DefaultGraph {
     fn index_for(&self, id: usize) -> Result<usize, Error> {
         match self.indices.get(&id) {
             Some(index) => Ok(*index),
-            None => Err(Error::MissingNode(id))
+            None => Err(Error::UnknownId(id))
         }
     }
 }
 
 impl Graph for DefaultGraph {
     fn is_empty(&self) -> bool {
-        self.nodes.is_empty()
+        self.ids.is_empty()
     }
 
     fn order(&self) -> usize {
-        self.nodes.len()
+        self.ids.len()
     }
 
     fn size(&self) -> usize {
         self.edges.len()
     }
 
-    fn nodes(&self) -> Box<dyn Iterator<Item=usize> + '_> {
-        Box::new(self.nodes.iter().cloned())
+    fn ids(&self) -> Box<dyn Iterator<Item=usize> + '_> {
+        Box::new(self.ids.iter().cloned())
     }
 
     fn neighbors(
@@ -133,7 +133,7 @@ impl Graph for DefaultGraph {
         if self.indices.contains_key(&tid) {
             Ok(self.adjacency[index].contains(&tid))
         } else {
-            return Err(Error::MissingNode(tid));
+            return Err(Error::UnknownId(tid));
         }
     }
 }
@@ -147,7 +147,7 @@ impl TryFrom<Vec<Vec<usize>>> for DefaultGraph {
         for (sid, neighbors) in adjacency.iter().enumerate() {
             for (index, &tid) in neighbors.iter().enumerate() {
                 if tid >= adjacency.len() {
-                    return Err(Error::MissingNode(tid));
+                    return Err(Error::UnknownId(tid));
                 } else if neighbors[index+1..].contains(&tid) {
                     return Err(Error::DuplicateEdge(sid, tid));
                 } else if !adjacency[tid].contains(&sid) {
@@ -159,7 +159,7 @@ impl TryFrom<Vec<Vec<usize>>> for DefaultGraph {
                 }
             }
 
-            result.nodes.push(sid);
+            result.ids.push(sid);
             result.indices.insert(sid, sid);
         }
 
@@ -221,7 +221,7 @@ impl PartialEq for DefaultGraph {
             return false;
         }
 
-        for id in self.nodes() {
+        for id in self.ids() {
             if !other.has_node(id) {
                 return false;
             }
@@ -251,7 +251,7 @@ mod try_from_adjacency {
             vec![ 1 ]
         ]);
 
-        assert_eq!(graph, Err(Error::MissingNode(1)))
+        assert_eq!(graph, Err(Error::UnknownId(1)))
     }
 
     #[test]
@@ -362,7 +362,7 @@ mod add_node {
             vec![ ]
         ]).unwrap();
 
-        assert_eq!(graph.add_node(0), Err(Error::DuplicateNode(0)))
+        assert_eq!(graph.add_node(0), Err(Error::DuplicateId(0)))
     }
 }
 
@@ -396,7 +396,7 @@ mod add_edge {
             vec![ ]
         ]).unwrap();
 
-        assert_eq!(graph.add_edge(1, 0), Err(Error::MissingNode(1)))
+        assert_eq!(graph.add_edge(1, 0), Err(Error::UnknownId(1)))
     }
 
     #[test]
@@ -405,7 +405,7 @@ mod add_edge {
             vec![ ]
         ]).unwrap();
 
-        assert_eq!(graph.add_edge(0, 1), Err(Error::MissingNode(1)))
+        assert_eq!(graph.add_edge(0, 1), Err(Error::UnknownId(1)))
     }
 }
 
@@ -484,7 +484,7 @@ mod nodes {
     fn p0() {
         let graph = DefaultGraph::new();
 
-        assert_eq!(graph.nodes().collect::<Vec<_>>(), [ ])
+        assert_eq!(graph.ids().collect::<Vec<_>>(), [ ])
     }
 
     #[test]
@@ -495,7 +495,7 @@ mod nodes {
             vec![ 1 ]
         ]).unwrap();
 
-        assert_eq!(graph.nodes().collect::<Vec<_>>(), [ 0, 1, 2 ])
+        assert_eq!(graph.ids().collect::<Vec<_>>(), [ 0, 1, 2 ])
     }
 }
 
@@ -507,7 +507,7 @@ mod neighbors {
     fn given_outside() {
         let graph = DefaultGraph::new();
 
-        assert_eq!(graph.neighbors(1).err(), Some(Error::MissingNode(1)))
+        assert_eq!(graph.neighbors(1).err(), Some(Error::UnknownId(1)))
     }
 
     #[test]
@@ -551,7 +551,7 @@ mod degree {
     fn given_outside() {
         let graph = DefaultGraph::new();
 
-        assert_eq!(graph.degree(0), Err(Error::MissingNode(0)))
+        assert_eq!(graph.degree(0), Err(Error::UnknownId(0)))
     }
 
     #[test]
@@ -597,7 +597,7 @@ mod has_edge {
     fn unk_unk() {
         let graph = DefaultGraph::new();
 
-        assert_eq!(graph.has_edge(0, 1), Err(Error::MissingNode(0)))
+        assert_eq!(graph.has_edge(0, 1), Err(Error::UnknownId(0)))
     }
 
     #[test]
@@ -606,7 +606,7 @@ mod has_edge {
             vec![ ]
         ]).unwrap();
 
-        assert_eq!(graph.has_edge(0, 1), Err(Error::MissingNode(1)))
+        assert_eq!(graph.has_edge(0, 1), Err(Error::UnknownId(1)))
     }
 
     #[test]

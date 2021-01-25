@@ -1,6 +1,6 @@
 pub use super::error::Error;
 
-/// An unweighted, undirected graph.
+/// An unweighted graph.
 pub trait Graph {
     /// Returns true if there are no nodes, or false otherwise.
     fn is_empty(&self) -> bool;
@@ -11,27 +11,25 @@ pub trait Graph {
     /// Returns the number of edges in this graph.
     fn size(&self) -> usize;
 
-    /// Returns the nodes of this graph.
-    fn nodes(&self) -> Box<dyn Iterator<Item=usize> + '_>;
+    /// Returns an Iterator over node identifiers.
+    fn ids(&self) -> Box<dyn Iterator<Item=usize> + '_>;
 
-    /// Iterates the neighbors of the node.
-    /// Returns an error if id not found.
+    /// Returns an iterator over node identifiers for the neighbors at id,
+    /// or Error if not found.
     fn neighbors(
         &self, id: usize
     ) -> Result<Box<dyn Iterator<Item=usize> + '_>, Error>;
     
-    /// Returns true if node is a member, or false otherwise.
+    /// Returns true if id is a member, or false otherwise.
     fn has_node(&self, id: usize) -> bool;
 
-    /// Returns the count of neighbors at node. REturns an error if id not
-    /// found.
+    /// Returns the count of neighbors at id, or Error if id not found.
     fn degree(&self, id: usize) -> Result<usize, Error>;
 
-    /// Returns the edges of this graph.
-    // fn edges(&self) -> &[(usize, usize)];
+    /// Returns an iterator over the edges of this graph.
     fn edges(&self) -> Box<dyn Iterator<Item=(usize, usize)> + '_>;
 
     /// Returns true if the edge (sid, tid) exists, or false otherwise.
-    /// Returns MissingNode if either sid or tid are not members.
+    /// Returns Error if either sid or tid are found.
     fn has_edge(&self, sid: usize, tid: usize) -> Result<bool, Error>;
 }
