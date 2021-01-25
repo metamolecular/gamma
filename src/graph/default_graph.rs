@@ -113,7 +113,7 @@ impl Graph for DefaultGraph {
         Ok(Box::new(self.adjacency[index].iter().cloned()))
     }
     
-    fn has_node(&self, id: usize) -> bool {
+    fn has_id(&self, id: usize) -> bool {
         self.indices.contains_key(&id)
     }
 
@@ -198,11 +198,11 @@ impl TryFrom<Vec<(usize, usize)>> for DefaultGraph {
         let mut result = DefaultGraph::new();
 
         for (sid, tid) in edges {
-            if !result.has_node(sid) {
+            if !result.has_id(sid) {
                 result.add_node(sid)?;
             }
 
-            if !result.has_node(tid) {
+            if !result.has_id(tid) {
                 result.add_node(tid)?;
             }
 
@@ -222,7 +222,7 @@ impl PartialEq for DefaultGraph {
         }
 
         for id in self.ids() {
-            if !other.has_node(id) {
+            if !other.has_id(id) {
                 return false;
             }
         }
@@ -530,7 +530,7 @@ mod has_node {
     fn given_outside() {
         let graph = DefaultGraph::new();
 
-        assert_eq!(graph.has_node(0), false)
+        assert_eq!(graph.has_id(0), false)
     }
 
     #[test]
@@ -539,7 +539,7 @@ mod has_node {
             vec![ ]
         ]).unwrap();
 
-        assert_eq!(graph.has_node(0), true)
+        assert_eq!(graph.has_id(0), true)
     }
 }
 

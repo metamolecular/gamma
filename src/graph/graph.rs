@@ -21,7 +21,7 @@ pub trait Graph {
     ) -> Result<Box<dyn Iterator<Item=usize> + '_>, Error>;
     
     /// Returns true if id is a member, or false otherwise.
-    fn has_node(&self, id: usize) -> bool;
+    fn has_id(&self, id: usize) -> bool;
 
     /// Returns the count of neighbors at id, or Error if id not found.
     fn degree(&self, id: usize) -> Result<usize, Error>;

@@ -34,7 +34,7 @@ fn main() -> Result<(), Error> {
     assert_eq!(p3.size(), 2);
     assert_eq!(p3.ids().collect::<Vec<_>>(), [ 0, 1, 2 ]);
     assert_eq!(p3.neighbors(1)?.collect::<Vec<_>>(), [ 0, 2 ]);
-    assert_eq!(p3.has_node(4), false);
+    assert_eq!(p3.has_id(4), false);
     assert_eq!(p3.degree(0)?, 1);
     assert_eq!(p3.edges().collect::<Vec<_>>(), [
         (0, 1),
