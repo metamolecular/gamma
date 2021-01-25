@@ -16,7 +16,7 @@ gamma = 0.9.0
 ## Examples
 
 `ArrayGraph` is a reference `Graph` implementation. Node, neighbor, and
-edge iteration order are stable and set by the `try_from` function.
+edge iteration order are stable and set by the `try_from` method.
 
 ```rust
 use std::convert::TryFrom;
