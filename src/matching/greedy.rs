@@ -44,13 +44,11 @@ pub fn greedy<G: Graph>(graph: &G) -> Pairing {
     let mut nodes = HashSet::new();
 
     for graph in components(graph) {
-        let traversal = DepthFirst::new(&graph, graph.nodes()[0]).expect(
-            "could not create depth-first traversal"
-        );
+        let root = graph.nodes().next().expect("component root");
+        let traversal = DepthFirst::new(&graph, root).expect("traversal");
 
         for Step { sid, tid, cut: _ } in traversal {
             if nodes.insert(sid) && nodes.insert(tid) {
-                // edges.push((sid, tid));
                 pairing.pair(sid, tid);
             }
         }

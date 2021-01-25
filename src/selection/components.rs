@@ -38,14 +38,15 @@ pub fn components<'a, G: Graph>(
 ) -> Components<'a, G> {
     Components {
         visited: HashSet::new(),
-        iter: graph.nodes().iter(),
+        iter: graph.nodes(),
         graph: graph
     }
 }
 
 pub struct Components<'a, G: Graph> {
     visited: HashSet<usize>,
-    iter: std::slice::Iter<'a, usize>,
+    // iter: std::slice::Iter<'a, usize>,
+    iter: Box<dyn Iterator<Item=usize> + 'a>,
     graph: &'a G
 }
 
@@ -56,7 +57,7 @@ impl<'a, G: Graph> Iterator for Components<'a, G> {
         let root = loop {
             match self.iter.next() {
                 Some(root) => {
-                    if !self.visited.contains(root) {
+                    if !self.visited.contains(&root) {
                         break root;
                     }
                 },
@@ -64,9 +65,9 @@ impl<'a, G: Graph> Iterator for Components<'a, G> {
             }
         };
 
-        self.visited.insert(*root);
+        self.visited.insert(root);
 
-        let traversal = DepthFirst::new(self.graph, *root).expect(
+        let traversal = DepthFirst::new(self.graph, root).expect(
             "root not found"
         );
         let mut component = DefaultGraph::try_from(traversal).expect(
@@ -74,10 +75,10 @@ impl<'a, G: Graph> Iterator for Components<'a, G> {
         );
 
         if component.is_empty() {
-            component.add_node(*root).expect("add root to empty graph");
+            component.add_node(root).expect("add root to empty graph");
         } else {
             for id in component.nodes() {
-                self.visited.insert(*id);
+                self.visited.insert(id);
             }
         }
 

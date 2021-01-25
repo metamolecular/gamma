@@ -59,7 +59,7 @@ impl<'a, G: Graph> BreadthFirst<'a, G> {
         let mut queue = VecDeque::new();
     
         for neighbor in graph.neighbors(root)? {
-            queue.push_front((root, *neighbor));
+            queue.push_front((root, neighbor));
         }
     
         nodes.insert(root);
@@ -80,11 +80,11 @@ impl<'a, G> Iterator for BreadthFirst<'a, G>
                     Some(Step::new(parent, node, true))
                 } else {
                     for neighbor in self.graph.neighbors(node).unwrap() {
-                        if *neighbor == parent || self.nodes.contains(neighbor) {
+                        if neighbor == parent || self.nodes.contains(&neighbor) {
                             continue;
                         }
     
-                        self.queue.push_front((node, *neighbor));
+                        self.queue.push_front((node, neighbor));
                     }
 
                     self.nodes.insert(node);

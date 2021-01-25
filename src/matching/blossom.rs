@@ -38,25 +38,25 @@ impl Blossom {
 
         result.add_node(self.id)?;
     
-        for &id in graph.nodes() {
+        for id in graph.nodes() {
             if !self.path.contains(&id) {
                 result.add_node(id)?;
             }
         }
 
         for (sid, tid) in graph.edges() {
-            if self.path.contains(sid) {
-                if !self.path.contains(tid) {
-                    if !result.has_edge(self.id, *tid)? {
-                        result.add_edge(self.id, *tid)?;
+            if self.path.contains(&sid) {
+                if !self.path.contains(&tid) {
+                    if !result.has_edge(self.id, tid)? {
+                        result.add_edge(self.id, tid)?;
                     }
                 }
-            } else if self.path.contains(tid) {
-                if !result.has_edge(*sid, self.id)? {
-                    result.add_edge(*sid, self.id)?;
+            } else if self.path.contains(&tid) {
+                if !result.has_edge(sid, self.id)? {
+                    result.add_edge(sid, self.id)?;
                 }
             } else {
-                result.add_edge(*sid, *tid)?;
+                result.add_edge(sid, tid)?;
             }
         }
     

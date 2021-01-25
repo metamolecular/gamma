@@ -10,13 +10,13 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gamma = 0.8
+gamma = 0.9.0
 ```
 
 ## Examples
 
 `ArrayGraph` is a reference `Graph` implementation. Node, neighbor, and
-edge iteration order are stable and determined by the `from_adjacency` function.
+edge iteration order are stable and determined by the `try_from` function.
 
 ```rust
 use std::convert::TryFrom;
@@ -32,11 +32,11 @@ fn main() -> Result<(), Error> {
     assert_eq!(p3.is_empty(), false);
     assert_eq!(p3.order(), 3);
     assert_eq!(p3.size(), 2);
-    assert_eq!(p3.nodes().to_vec(), vec![ 0, 1, 2 ]);
-    assert_eq!(p3.neighbors(1)?.to_vec(), vec![ 0, 2 ]);
+    assert_eq!(p3.nodes().collect::<Vec<_>>(), [ 0, 1, 2 ]);
+    assert_eq!(p3.neighbors(1)?.collect::<Vec<_>>(), [ 0, 2 ]);
     assert_eq!(p3.has_node(4), false);
     assert_eq!(p3.degree(0)?, 1);
-    assert_eq!(p3.edges().to_vec(), vec![
+    assert_eq!(p3.edges().collect::<Vec<_>>(), [
         (0, 1),
         (1, 2)
     ]);
@@ -60,7 +60,7 @@ Features include:
 
 ## Versions
 
-Gamma is not yet stable, but care is taken to limit breaking changes whenever possible. Patch versions never introduce breaking changes.
+Gamma is not yet stable. Patch versions never introduce breaking changes, but minor/major versions probably will.
 
 ## License
 

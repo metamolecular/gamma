@@ -20,7 +20,7 @@ use crate::traversal::DepthFirst;
 ///         vec![ 1 ]
 ///     ])?;
 /// 
-///     assert_eq!(c3.nodes().to_vec(), vec![ 0, 1, 2 ]);
+///     assert_eq!(c3.nodes().collect::<Vec<_>>(), vec![ 0, 1, 2 ]);
 /// 
 ///     assert_eq!(c3.add_edge(0, 1), Err(Error::DuplicateEdge(0, 1)));
 /// 
@@ -101,14 +101,16 @@ impl Graph for DefaultGraph {
         self.edges.len()
     }
 
-    fn nodes(&self) -> &[usize] {
-        &self.nodes[..]
+    fn nodes(&self) -> Box<dyn Iterator<Item=usize> + '_> {
+        Box::new(self.nodes.iter().cloned())
     }
 
-    fn neighbors(&self, id: usize) -> Result<&[usize], Error> {
+    fn neighbors(
+        &self, id: usize
+    ) -> Result<Box<dyn Iterator<Item=usize> + '_>, Error> {
         let index = self.index_for(id)?;
 
-        Ok(&self.adjacency[index])
+        Ok(Box::new(self.adjacency[index].iter().cloned()))
     }
     
     fn has_node(&self, id: usize) -> bool {
@@ -121,8 +123,8 @@ impl Graph for DefaultGraph {
         Ok(self.adjacency[index].len())
     }
 
-    fn edges(&self) -> &[(usize, usize)] {
-        &self.edges[..]
+    fn edges(&self) -> Box<dyn Iterator<Item=(usize, usize)> + '_> {
+        Box::new(self.edges.iter().cloned())
     }
 
     fn has_edge(&self, sid: usize, tid: usize) -> Result<bool, Error> {
@@ -219,14 +221,14 @@ impl PartialEq for DefaultGraph {
             return false;
         }
 
-        for &id in self.nodes() {
+        for id in self.nodes() {
             if !other.has_node(id) {
                 return false;
             }
         }
 
         for (sid, tid) in self.edges() {
-            match other.has_edge(*sid, *tid) {
+            match other.has_edge(sid, tid) {
                 Ok(result) => {
                     if !result {
                         return false
@@ -333,7 +335,7 @@ mod try_from_depth_first {
         let traversal = DepthFirst::new(&g1, 1).unwrap();
         let g2 = DefaultGraph::try_from(traversal).unwrap();
 
-        assert_eq!(g2.edges(), [ (1, 0), (1, 2) ])
+        assert_eq!(g2.edges().collect::<Vec<_>>(), [ (1, 0), (1, 2) ])
     }
 
     #[test]
@@ -346,7 +348,7 @@ mod try_from_depth_first {
         let traversal = DepthFirst::new(&g1, 0).unwrap();
         let g2 = DefaultGraph::try_from(traversal).unwrap();
 
-        assert_eq!(g2.edges(), [ (0, 1), (1, 2), (2, 0) ])
+        assert_eq!(g2.edges().collect::<Vec<_>>(), [ (0, 1), (1, 2), (2, 0) ])
     }
 }
 
@@ -482,7 +484,7 @@ mod nodes {
     fn p0() {
         let graph = DefaultGraph::new();
 
-        assert_eq!(graph.nodes(), [ ])
+        assert_eq!(graph.nodes().collect::<Vec<_>>(), [ ])
     }
 
     #[test]
@@ -493,7 +495,7 @@ mod nodes {
             vec![ 1 ]
         ]).unwrap();
 
-        assert_eq!(graph.nodes(), [ 0, 1, 2 ])
+        assert_eq!(graph.nodes().collect::<Vec<_>>(), [ 0, 1, 2 ])
     }
 }
 
@@ -505,7 +507,7 @@ mod neighbors {
     fn given_outside() {
         let graph = DefaultGraph::new();
 
-        assert_eq!(graph.neighbors(1), Err(Error::MissingNode(1)))
+        assert_eq!(graph.neighbors(1).err(), Some(Error::MissingNode(1)))
     }
 
     #[test]
@@ -516,7 +518,7 @@ mod neighbors {
             vec![ 1 ]
         ]).unwrap();
 
-        assert_eq!(graph.neighbors(1).unwrap(), [ 0, 2 ])
+        assert_eq!(graph.neighbors(1).unwrap().collect::<Vec<_>>(), [ 0, 2 ])
     }
 }
 
@@ -572,7 +574,7 @@ mod edges {
     fn p0() {
         let graph = DefaultGraph::new();
 
-        assert_eq!(graph.edges().to_vec(), vec![ ])
+        assert_eq!(graph.edges().collect::<Vec<_>>(), vec![ ])
     }
 
     #[test]
@@ -583,7 +585,7 @@ mod edges {
             vec![ 1 ]
         ]).unwrap();
 
-        assert_eq!(graph.edges(), [ (0, 1), (1, 2) ])
+        assert_eq!(graph.edges().collect::<Vec<_>>(), [ (0, 1), (1, 2) ])
     }
 }
 
