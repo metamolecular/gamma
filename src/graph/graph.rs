@@ -30,6 +30,6 @@ pub trait Graph {
     fn edges(&self) -> Box<dyn Iterator<Item=(usize, usize)> + '_>;
 
     /// Returns true if the edge (sid, tid) exists, or false otherwise.
-    /// Returns Error if either sid or tid are found.
+    /// Returns Error if either sid or tid are not found.
     fn has_edge(&self, sid: usize, tid: usize) -> Result<bool, Error>;
 }
